@@ -1103,3 +1103,77 @@ input {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Withdraw form */
+.sheet__panel--scroll {
+  max-height: min(92vh, 720px);
+  overflow-y: auto;
+}
+
+.field-lab {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.field--full {
+  width: 100%;
+  display: block;
+}
+
+.method-card {
+  display: grid;
+  grid-template-columns: 48px 1fr 28px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  margin: 4px 0 8px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.method-card--on {
+  border-color: #555;
+  background: #121212;
+}
+
+.method-card__ico {
+  width: 48px;
+  height: 48px;
+  color: var(--white);
+  display: grid;
+  place-items: center;
+}
+
+.method-card__ico svg {
+  width: 44px;
+  height: 44px;
+}
+
+.method-card__title {
+  font-weight: 750;
+  font-size: 0.95rem;
+  letter-spacing: -0.02em;
+}
+
+.method-card__sub {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.method-card__check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #555;
+  display: grid;
+  place-items: center;
+  color: var(--white);
+  background: #1a1a1a;
+}

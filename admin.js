@@ -65,6 +65,17 @@ async function loadStats() {
   } catch (e) {
     document.getElementById("s-bal").textContent = "офлайн";
   }
+  try {
+    const st = await api(`/api/admin/settings?${adminQuery()}`);
+    if (st.referral_bonus != null) {
+      document.getElementById("f-ref-bonus").value = String(st.referral_bonus);
+    }
+    if (st.withdraw_hours != null) {
+      document.getElementById("f-wd-hours").value = String(st.withdraw_hours);
+    }
+  } catch (_) {
+    /* ignore */
+  }
 }
 
 async function saveReferralBonus() {
@@ -86,6 +97,73 @@ async function saveReferralBonus() {
   } catch (e) {
     msg.textContent = e.message;
     toast(e.message);
+  }
+}
+
+async function saveWithdrawHours() {
+  const input = document.getElementById("f-wd-hours");
+  const msg = document.getElementById("wd-hours-msg");
+  const hours = Number(input.value);
+  if (!hours || hours < 1) {
+    msg.textContent = "Укажите число часов (≥ 1)";
+    return;
+  }
+  try {
+    const res = await api(`/api/admin/settings/withdraw_hours?${adminQuery()}`, {
+      method: "PUT",
+      body: JSON.stringify({ hours: Math.floor(hours) }),
+    });
+    msg.textContent = `Сохранено: ${res.withdraw_hours} ч. для пользователей`;
+    toast("Срок вывода обновлён");
+    input.value = String(res.withdraw_hours);
+  } catch (e) {
+    msg.textContent = e.message;
+    toast(e.message);
+  }
+}
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+async function loadWithdrawals() {
+  const box = document.getElementById("wd-admin-list");
+  if (!box) return;
+  try {
+    const data = await api(`/api/admin/withdrawals?${adminQuery()}`);
+    const list = data.withdrawals || [];
+    if (!list.length) {
+      box.innerHTML = `<p class="hint">Заявок пока нет</p>`;
+      return;
+    }
+    box.innerHTML = list
+      .map((w) => {
+        const name = w.first_name || w.username || w.user_id;
+        return `<div class="item">
+          <div class="item__top">
+            <div class="item__title">#${w.id} · ${escapeHtml(String(name))}</div>
+            <div class="item__pay">${money(w.amount)}</div>
+          </div>
+          <div class="item__meta">
+            ${escapeHtml(w.method || "sbp").toUpperCase()} · ${escapeHtml(w.status || "pending")}<br/>
+            ${escapeHtml(w.phone || "—")} · ${escapeHtml(w.bank || "—")}<br/>
+            ${fmtDate(w.created_at)}
+          </div>
+        </div>`;
+      })
+      .join("");
+  } catch (e) {
+    box.innerHTML = `<p class="hint">${escapeHtml(e.message)}</p>`;
   }
 }
 
@@ -239,14 +317,21 @@ function init() {
 
   document.getElementById("btn-create")?.addEventListener("click", createTask);
   document.getElementById("btn-save-ref")?.addEventListener("click", saveReferralBonus);
+  document.getElementById("btn-save-wd-hours")?.addEventListener("click", saveWithdrawHours);
+  document.getElementById("btn-reload-wd")?.addEventListener("click", async () => {
+    await loadWithdrawals();
+    toast("Обновлено");
+  });
   document.getElementById("btn-reload")?.addEventListener("click", async () => {
     await loadTasks();
     await loadStats();
+    await loadWithdrawals();
     toast("Обновлено");
   });
 
   loadStats();
   loadTasks();
+  loadWithdrawals();
 }
 
 document.addEventListener("DOMContentLoaded", init);

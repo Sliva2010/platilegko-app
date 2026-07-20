@@ -43,6 +43,27 @@
       </section>
 
       <section class="card">
+        <h2 class="card__title">Срок вывода</h2>
+        <p class="hint">Текст пользователю: «Вывод средств будет в течение N часов».</p>
+        <label class="lab">Часов до вывода</label>
+        <div class="row-inline">
+          <input id="f-wd-hours" class="inp" type="number" min="1" step="1" placeholder="48" />
+          <button type="button" class="btn btn--sm-inline" id="btn-save-wd-hours">Сохранить</button>
+        </div>
+        <p class="form-msg" id="wd-hours-msg"></p>
+      </section>
+
+      <section class="card">
+        <div class="card__row">
+          <h2 class="card__title">Заявки на вывод</h2>
+          <button type="button" class="btn btn--ghost btn--sm" id="btn-reload-wd">Обновить</button>
+        </div>
+        <div id="wd-admin-list" class="list">
+          <p class="hint">Загрузка…</p>
+        </div>
+      </section>
+
+      <section class="card">
         <h2 class="card__title">Новое задание</h2>
         <p class="hint">Тип: подписка на канал. Бот должен быть админом канала.</p>
 

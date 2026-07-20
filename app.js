@@ -13,6 +13,8 @@ const state = {
   selectedTask: null,
   verifying: false,
   balanceNum: 0,
+  withdrawHours: 48,
+  withdrawing: false,
 };
 
 const tg = window.Telegram?.WebApp;
@@ -501,6 +503,113 @@ async function loadData() {
   await loadTasks();
 }
 
+function setWithdrawHoursHint(hours) {
+  state.withdrawHours = hours || 48;
+  const el = document.getElementById("withdraw-hours-hint");
+  if (el) {
+    el.textContent = `Вывод средств будет в течение ${state.withdrawHours} часов.`;
+  }
+}
+
+function openWithdraw() {
+  const bal = state.balanceNum || 0;
+  if (bal <= 0) {
+    toast("Недостаточно средств");
+    return;
+  }
+  const modal = document.getElementById("withdraw-modal");
+  modal.classList.remove("is-closing");
+  document.getElementById("wd-amount").value = String(bal);
+  document.getElementById("wd-phone").value = "";
+  document.getElementById("wd-bank").value = "";
+  document.getElementById("wd-status").textContent = "";
+  setWithdrawHoursHint(state.withdrawHours);
+  modal.hidden = false;
+  haptic("light");
+  bindRipple(modal);
+}
+
+function closeWithdraw() {
+  const modal = document.getElementById("withdraw-modal");
+  if (!modal || modal.hidden) return;
+  modal.classList.add("is-closing");
+  setTimeout(() => {
+    modal.hidden = true;
+    modal.classList.remove("is-closing");
+  }, 200);
+}
+
+async function submitWithdraw() {
+  if (state.withdrawing) return;
+  const uid = state.user?.user_id || tgUser().user_id;
+  if (!uid) return toast("Не удалось определить пользователя");
+
+  const amount = Number(document.getElementById("wd-amount").value);
+  const phone = (document.getElementById("wd-phone").value || "").trim();
+  const bank = (document.getElementById("wd-bank").value || "").trim();
+  const status = document.getElementById("wd-status");
+  const btn = document.getElementById("btn-wd-submit");
+
+  if (!amount || amount <= 0) {
+    status.textContent = "Укажите сумму";
+    return;
+  }
+  if (amount > state.balanceNum + 0.001) {
+    status.textContent = "Сумма больше баланса";
+    return;
+  }
+  if (phone.replace(/\D/g, "").length < 10) {
+    status.textContent = "Укажите корректный номер телефона";
+    return;
+  }
+  if (!bank) {
+    status.textContent = "Укажите банк";
+    return;
+  }
+
+  state.withdrawing = true;
+  btn.disabled = true;
+  btn.classList.add("btn--loading");
+  status.textContent = "Отправляем заявку…";
+  try {
+    const res = await api(`/api/user/${uid}/withdraw`, {
+      method: "POST",
+      body: JSON.stringify({
+        amount,
+        phone,
+        bank,
+        method: "sbp",
+      }),
+    });
+    if (res.withdraw_hours) setWithdrawHoursHint(res.withdraw_hours);
+    status.textContent = res.message || "Заявка принята";
+    status.classList.add("sheet__note--ok");
+    toast(res.message || "Заявка принята");
+    haptic("success");
+    if (res.user) renderUser(res.user, tgUser());
+    await loadTx();
+    setTimeout(() => closeWithdraw(), 1400);
+  } catch (e) {
+    status.textContent = e.message || "Ошибка";
+    status.classList.remove("sheet__note--ok");
+    toast(e.message || "Ошибка");
+    haptic("error");
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove("btn--loading");
+    state.withdrawing = false;
+  }
+}
+
+async function loadPublicSettings() {
+  try {
+    const s = await api("/api/settings/public");
+    if (s.withdraw_hours) setWithdrawHoursHint(s.withdraw_hours);
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
 function bind() {
   document.querySelectorAll(".dock__btn").forEach((b) => {
     b.addEventListener("click", () => switchTab(b.dataset.nav));
@@ -508,11 +617,13 @@ function bind() {
   document.querySelectorAll("[data-close-modal]").forEach((el) => {
     el.addEventListener("click", closeModal);
   });
+  document.querySelectorAll("[data-close-withdraw]").forEach((el) => {
+    el.addEventListener("click", closeWithdraw);
+  });
   document.getElementById("btn-do-task")?.addEventListener("click", doTask);
   document.getElementById("btn-check-task")?.addEventListener("click", checkTask);
-  document.getElementById("btn-withdraw")?.addEventListener("click", () => {
-    toast("Вывод — скоро");
-  });
+  document.getElementById("btn-withdraw")?.addEventListener("click", openWithdraw);
+  document.getElementById("btn-wd-submit")?.addEventListener("click", submitWithdraw);
   document.getElementById("btn-refresh-wallet")?.addEventListener("click", async () => {
     await loadData();
     await loadTx();
@@ -550,6 +661,7 @@ function init() {
   }
   bind();
   bindRipple();
+  loadPublicSettings();
   loadData();
 }
 
