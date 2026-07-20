@@ -1,8 +1,6 @@
 /**
  * ПлатиЛегко! Mini App
- *
- * API_BASE: локальный backend. Для работы из GitHub Pages подставьте URL ngrok, например:
- *   const API_BASE = "https://xxxx.ngrok-free.app";
+ * Для GitHub Pages + локальный API: подставьте ngrok в API_BASE.
  */
 const API_BASE = "http://127.0.0.1:8000";
 
@@ -16,33 +14,40 @@ const DEMO_TASKS = [
   {
     id: 2,
     title: "Пригласить друга",
-    description: "Пригласите друга по реферальной ссылке. Награда после его первого входа.",
+    description: "Пригласите друга по реферальной ссылке.",
     reward: 50,
   },
   {
     id: 3,
     title: "Оставить отзыв",
-    description: "Напишите короткий отзыв о сервисе в комментариях бота.",
+    description: "Напишите короткий отзыв о сервисе.",
     reward: 25,
   },
   {
     id: 4,
     title: "Заполнить профиль",
-    description: "Укажите имя и username в Telegram — задание для новых пользователей.",
+    description: "Укажите имя и username в Telegram.",
     reward: 10,
   },
   {
     id: 5,
     title: "Ежедневный вход",
-    description: "Откройте Mini App сегодня. Бонус за активность.",
+    description: "Откройте Mini App сегодня.",
     reward: 5,
   },
 ];
+
+const TASK_ICON_SVG = `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+  <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+</svg>`;
 
 const state = {
   user: null,
   tasks: [],
   selectedTask: null,
+  referrals: [],
+  photoUrl: null,
 };
 
 const tg = window.Telegram?.WebApp;
@@ -50,6 +55,20 @@ const tg = window.Telegram?.WebApp;
 function formatMoney(value) {
   const n = Number(value) || 0;
   return `${n.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
+}
+
+function formatDate(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
 }
 
 function showToast(message, ms = 2400) {
@@ -63,21 +82,30 @@ function showToast(message, ms = 2400) {
   }, ms);
 }
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function applyTelegramTheme() {
   if (!tg) return;
   const p = tg.themeParams || {};
   const root = document.documentElement;
-  if (p.bg_color) root.style.setProperty("--tg-theme-bg-color", p.bg_color);
-  if (p.text_color) root.style.setProperty("--tg-theme-text-color", p.text_color);
-  if (p.hint_color) root.style.setProperty("--tg-theme-hint-color", p.hint_color);
-  if (p.link_color) root.style.setProperty("--tg-theme-link-color", p.link_color);
-  if (p.button_color) root.style.setProperty("--tg-theme-button-color", p.button_color);
-  if (p.button_text_color) {
-    root.style.setProperty("--tg-theme-button-text-color", p.button_text_color);
-  }
-  if (p.secondary_bg_color) {
-    root.style.setProperty("--tg-theme-secondary-bg-color", p.secondary_bg_color);
-  }
+  const map = {
+    bg_color: "--tg-theme-bg-color",
+    text_color: "--tg-theme-text-color",
+    hint_color: "--tg-theme-hint-color",
+    link_color: "--tg-theme-link-color",
+    button_color: "--tg-theme-button-color",
+    button_text_color: "--tg-theme-button-text-color",
+    secondary_bg_color: "--tg-theme-secondary-bg-color",
+  };
+  Object.entries(map).forEach(([k, cssVar]) => {
+    if (p[k]) root.style.setProperty(cssVar, p[k]);
+  });
 }
 
 function getTelegramUser() {
@@ -88,14 +116,15 @@ function getTelegramUser() {
       username: u.username || null,
       first_name: u.first_name || "Пользователь",
       last_name: u.last_name || "",
+      photo_url: u.photo_url || null,
     };
   }
-  // Browser preview fallback
   return {
     user_id: 0,
     username: "preview",
     first_name: "Гость",
     last_name: "",
+    photo_url: null,
   };
 }
 
@@ -114,20 +143,57 @@ function switchTab(name) {
   document.querySelectorAll(".nav__item").forEach((btn) => {
     btn.classList.toggle("nav__item--active", btn.dataset.nav === name);
   });
-  if (tg?.HapticFeedback?.selectionChanged) {
-    try {
-      tg.HapticFeedback.selectionChanged();
-    } catch (_) {
-      /* ignore */
-    }
+  try {
+    tg?.HapticFeedback?.selectionChanged?.();
+  } catch (_) {
+    /* ignore */
   }
+  if (name === "wallet") loadTransactions();
+  if (name === "friends") loadReferrals();
 }
 
-function renderUser(user) {
+function setAvatar(photoUrl, fallbackLetter) {
+  const img = document.getElementById("profile-avatar-img");
+  const fb = document.getElementById("profile-avatar-fallback");
+  if (!img || !fb) return;
+
+  const letter = (fallbackLetter || "?").toUpperCase();
+  fb.textContent = letter;
+
+  if (!photoUrl) {
+    img.hidden = true;
+    img.removeAttribute("src");
+    fb.hidden = false;
+    return;
+  }
+
+  img.onload = () => {
+    img.hidden = false;
+    fb.hidden = true;
+  };
+  img.onerror = () => {
+    img.hidden = true;
+    fb.hidden = false;
+  };
+  img.src = photoUrl;
+}
+
+function resolvePhotoUrl(tgUser, userId) {
+  if (tgUser.photo_url) return tgUser.photo_url;
+  if (userId) return `${API_BASE}/api/user/${userId}/photo`;
+  return null;
+}
+
+function renderUser(user, tgUser) {
   state.user = user;
   const balance = formatMoney(user.balance ?? 0);
-  const name = user.first_name || "Гость";
-  const username = user.username ? `@${user.username}` : "@—";
+  const name = user.first_name || tgUser?.first_name || "Гость";
+  const username = user.username
+    ? `@${user.username}`
+    : tgUser?.username
+      ? `@${tgUser.username}`
+      : "@—";
+  const refs = user.referrals_count ?? 0;
   const letter = (name[0] || "?").toUpperCase();
 
   const set = (id, text) => {
@@ -140,9 +206,25 @@ function renderUser(user) {
   set("profile-name", name);
   set("profile-username", username);
   set("profile-id", `ID: ${user.user_id ?? "—"}`);
-  set("profile-avatar", letter);
   set("stat-balance", balance);
   set("stat-tasks", String(user.tasks_completed ?? 0));
+  set("stat-refs", String(refs));
+  set("wallet-tasks", String(user.tasks_completed ?? 0));
+  set("wallet-refs", String(refs));
+  set("ref-count", String(refs));
+  set("ref-earned", formatMoney(refs * (user.referral_bonus ?? 10)));
+  if (user.referral_bonus != null) {
+    set("ref-bonus", `+${formatMoney(user.referral_bonus)}`);
+  }
+
+  const linkInput = document.getElementById("ref-link");
+  if (linkInput) {
+    linkInput.value = user.referral_link || "Ссылка появится после /start в боте";
+  }
+
+  const photo = resolvePhotoUrl(tgUser || getTelegramUser(), user.user_id);
+  state.photoUrl = photo;
+  setAvatar(photo, letter);
 }
 
 function renderTasks(tasks) {
@@ -159,7 +241,7 @@ function renderTasks(tasks) {
     .map(
       (t) => `
       <button type="button" class="task-card" data-task-id="${t.id}">
-        <div class="task-card__icon">💼</div>
+        <div class="task-card__icon">${TASK_ICON_SVG}</div>
         <div class="task-card__body">
           <div class="task-card__title">${escapeHtml(t.title)}</div>
           <div class="task-card__desc">${escapeHtml(t.description || "")}</div>
@@ -179,12 +261,62 @@ function renderTasks(tasks) {
   });
 }
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function renderFriends(list) {
+  const box = document.getElementById("friends-list");
+  if (!box) return;
+  if (!list.length) {
+    box.innerHTML = `<p class="muted empty-state">Пока никого нет — отправьте ссылку</p>`;
+    return;
+  }
+  box.innerHTML = list
+    .map((f) => {
+      const name = f.first_name || "Пользователь";
+      const un = f.username ? `@${f.username}` : `ID ${f.user_id}`;
+      const letter = (name[0] || "?").toUpperCase();
+      return `
+        <div class="friend-row">
+          <div class="avatar avatar--sm">
+            <span class="avatar__fallback">${letter}</span>
+          </div>
+          <div>
+            <div class="friend-row__name">${escapeHtml(name)}</div>
+            <div class="friend-row__meta">${escapeHtml(un)} · ${formatDate(f.created_at)}</div>
+          </div>
+        </div>`;
+    })
+    .join("");
+}
+
+function renderTransactions(txs) {
+  const box = document.getElementById("tx-list");
+  if (!box) return;
+  if (!txs.length) {
+    box.innerHTML = `<p class="muted empty-state">Пока нет операций</p>`;
+    return;
+  }
+  const typeLabel = {
+    reward: "Награда",
+    referral: "Реферал",
+    withdraw: "Вывод",
+  };
+  box.innerHTML = txs
+    .map((t) => {
+      const amount = Number(t.amount) || 0;
+      const plus = amount >= 0;
+      const title =
+        t.description || typeLabel[t.type] || t.type || "Операция";
+      return `
+        <div class="tx-row">
+          <div>
+            <div class="tx-row__title">${escapeHtml(title)}</div>
+            <div class="tx-row__date">${formatDate(t.created_at)}</div>
+          </div>
+          <div class="tx-row__amount ${plus ? "tx-row__amount--plus" : "tx-row__amount--minus"}">
+            ${plus ? "+" : ""}${formatMoney(amount)}
+          </div>
+        </div>`;
+    })
+    .join("");
 }
 
 function openTaskModal(task) {
@@ -192,20 +324,50 @@ function openTaskModal(task) {
   document.getElementById("modal-title").textContent = task.title;
   document.getElementById("modal-desc").textContent = task.description || "";
   document.getElementById("modal-reward").textContent = `+${formatMoney(task.reward)}`;
-  const modal = document.getElementById("task-modal");
-  modal.hidden = false;
-  if (tg?.HapticFeedback?.impactOccurred) {
-    try {
-      tg.HapticFeedback.impactOccurred("light");
-    } catch (_) {
-      /* ignore */
-    }
+  document.getElementById("task-modal").hidden = false;
+  try {
+    tg?.HapticFeedback?.impactOccurred?.("light");
+  } catch (_) {
+    /* ignore */
   }
 }
 
 function closeTaskModal() {
   document.getElementById("task-modal").hidden = true;
   state.selectedTask = null;
+}
+
+async function loadReferrals() {
+  const uid = state.user?.user_id || getTelegramUser().user_id;
+  if (!uid) return;
+  try {
+    const data = await apiGet(`/api/user/${uid}/referrals`);
+    state.referrals = data.referrals || [];
+    document.getElementById("ref-count").textContent = String(data.count ?? 0);
+    document.getElementById("ref-earned").textContent = formatMoney(
+      (data.count || 0) * (data.bonus_per_invite || 10)
+    );
+    document.getElementById("ref-bonus").textContent = `+${formatMoney(
+      data.bonus_per_invite || 10
+    )}`;
+    if (data.referral_link) {
+      document.getElementById("ref-link").value = data.referral_link;
+    }
+    renderFriends(state.referrals);
+  } catch (e) {
+    console.warn("referrals", e);
+  }
+}
+
+async function loadTransactions() {
+  const uid = state.user?.user_id || getTelegramUser().user_id;
+  if (!uid) return;
+  try {
+    const data = await apiGet(`/api/user/${uid}/transactions`);
+    renderTransactions(data.transactions || []);
+  } catch (e) {
+    console.warn("transactions", e);
+  }
 }
 
 function bindNav() {
@@ -218,27 +380,56 @@ function bindModal() {
   document.querySelectorAll("[data-close-modal]").forEach((el) => {
     el.addEventListener("click", closeTaskModal);
   });
-
-  // Stub buttons — logic later
   document.getElementById("btn-do-task")?.addEventListener("click", () => {
     showToast("«Выполнить» — скоро подключим");
-    if (tg?.HapticFeedback?.notificationOccurred) {
-      try {
-        tg.HapticFeedback.notificationOccurred("warning");
-      } catch (_) {
-        /* ignore */
-      }
+  });
+  document.getElementById("btn-check-task")?.addEventListener("click", () => {
+    showToast("«Проверить» — скоро подключим");
+  });
+}
+
+function bindWalletAndRefs() {
+  document.getElementById("btn-withdraw")?.addEventListener("click", () => {
+    showToast("Вывод средств — скоро");
+  });
+  document.getElementById("btn-refresh-wallet")?.addEventListener("click", async () => {
+    await loadData();
+    await loadTransactions();
+    showToast("Обновлено");
+  });
+
+  document.getElementById("btn-copy-ref")?.addEventListener("click", async () => {
+    const link = document.getElementById("ref-link")?.value;
+    if (!link || link.startsWith("Ссылка")) {
+      showToast("Ссылка пока недоступна");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast("Ссылка скопирована");
+    } catch {
+      const input = document.getElementById("ref-link");
+      input?.select();
+      showToast("Скопируйте ссылку вручную");
     }
   });
 
-  document.getElementById("btn-check-task")?.addEventListener("click", () => {
-    showToast("«Проверить» — скоро подключим");
-    if (tg?.HapticFeedback?.notificationOccurred) {
-      try {
-        tg.HapticFeedback.notificationOccurred("warning");
-      } catch (_) {
-        /* ignore */
-      }
+  document.getElementById("btn-share-ref")?.addEventListener("click", () => {
+    const link = document.getElementById("ref-link")?.value;
+    if (!link || link.startsWith("Ссылка")) {
+      showToast("Ссылка пока недоступна");
+      return;
+    }
+    const text = `Зарабатывай вместе со мной в ПлатиЛегко!\n${link}`;
+    if (tg?.openTelegramLink) {
+      tg.openTelegramLink(
+        `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Зарабатывай вместе со мной в ПлатиЛегко!")}`
+      );
+    } else {
+      window.open(
+        `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`,
+        "_blank"
+      );
     }
   });
 }
@@ -246,20 +437,24 @@ function bindModal() {
 async function loadData() {
   const tgUser = getTelegramUser();
 
-  // Profile from Telegram immediately
-  renderUser({
-    user_id: tgUser.user_id,
-    username: tgUser.username,
-    first_name: tgUser.first_name,
-    balance: 0,
-    tasks_completed: 0,
-  });
+  renderUser(
+    {
+      user_id: tgUser.user_id,
+      username: tgUser.username,
+      first_name: tgUser.first_name,
+      balance: 0,
+      tasks_completed: 0,
+      referrals_count: 0,
+      referral_bonus: 10,
+    },
+    tgUser
+  );
 
   try {
     const tasksRes = await apiGet("/api/tasks");
     renderTasks(tasksRes.tasks || []);
   } catch (e) {
-    console.warn("API tasks unavailable, using demo data", e);
+    console.warn("API tasks unavailable", e);
     renderTasks(DEMO_TASKS);
     showToast("Офлайн-режим: демо-задания");
   }
@@ -267,11 +462,14 @@ async function loadData() {
   if (tgUser.user_id) {
     try {
       const userRes = await apiGet(`/api/user/${tgUser.user_id}`);
-      renderUser({
-        ...userRes,
-        first_name: userRes.first_name || tgUser.first_name,
-        username: userRes.username || tgUser.username,
-      });
+      renderUser(
+        {
+          ...userRes,
+          first_name: userRes.first_name || tgUser.first_name,
+          username: userRes.username || tgUser.username,
+        },
+        tgUser
+      );
     } catch (e) {
       console.warn("API user unavailable", e);
     }
@@ -293,6 +491,7 @@ function init() {
 
   bindNav();
   bindModal();
+  bindWalletAndRefs();
   loadData();
 }
 
