@@ -164,9 +164,8 @@ function telegramInitData() {
 async function api(path, opts = {}) {
   const headers = {
     Accept: "application/json",
-    // localtunnel / некоторые прокси
+    // localtunnel (нельзя ставить User-Agent — forbidden header в WebView)
     "Bypass-Tunnel-Reminder": "true",
-    "User-Agent": "TelegramBot-WebApp-PlatiLegko/1.0",
     ...(opts.body ? { "Content-Type": "application/json" } : {}),
     ...(opts.headers || {}),
   };

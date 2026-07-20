@@ -47,7 +47,6 @@ async function api(path, opts = {}) {
   const headers = {
     Accept: "application/json",
     "Bypass-Tunnel-Reminder": "true",
-    "User-Agent": "TelegramBot-WebApp-PlatiLegko-Admin/1.0",
     ...(opts.body ? { "Content-Type": "application/json" } : {}),
     ...(opts.headers || {}),
   };
