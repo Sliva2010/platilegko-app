@@ -43,6 +43,20 @@
       </section>
 
       <section class="card">
+        <h2 class="card__title">Технические работы</h2>
+        <p class="hint">Если включено — в приложении полноэкранное сообщение, действия (проверка заданий, вывод) блокируются.</p>
+        <label class="lab">Статус</label>
+        <select id="f-maint" class="inp">
+          <option value="0">Выкл — приложение работает</option>
+          <option value="1">Вкл — техработы</option>
+        </select>
+        <label class="lab">Текст для пользователей</label>
+        <textarea id="f-maint-msg" class="inp inp--area" rows="3" placeholder="Извините, идут технические работы..."></textarea>
+        <button type="button" class="btn" id="btn-save-maint">Сохранить режим</button>
+        <p class="form-msg" id="maint-msg"></p>
+      </section>
+
+      <section class="card">
         <h2 class="card__title">Срок вывода</h2>
         <p class="hint">Текст пользователю: «Вывод средств будет в течение N часов».</p>
         <label class="lab">Часов до вывода</label>

@@ -65,7 +65,23 @@ input {
 
 /* Ambient pulse on brand mark */
 .mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  overflow: hidden;
+  background: #0a0a0a;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
   animation: markPulse 3.2s ease-in-out infinite;
+}
+
+.mark__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 @keyframes markPulse {
@@ -1102,6 +1118,62 @@ input {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Maintenance overlay */
+.maint {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: appBoot 0.4s var(--ease) both;
+}
+
+.maint[hidden] {
+  display: none;
+}
+
+.maint__card {
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #0c0c0c;
+  padding: 28px 22px;
+}
+
+.maint__logo {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+}
+
+.maint__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.maint__title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 10px;
+}
+
+.maint__text {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 /* Withdraw form */

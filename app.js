@@ -601,10 +601,25 @@ async function submitWithdraw() {
   }
 }
 
+function applyMaintenance(on, message) {
+  const box = document.getElementById("maintenance");
+  const text = document.getElementById("maintenance-text");
+  if (!box) return;
+  if (on) {
+    if (text && message) text.textContent = message;
+    box.hidden = false;
+    document.body.style.overflow = "hidden";
+  } else {
+    box.hidden = true;
+    document.body.style.overflow = "";
+  }
+}
+
 async function loadPublicSettings() {
   try {
     const s = await api("/api/settings/public");
     if (s.withdraw_hours) setWithdrawHoursHint(s.withdraw_hours);
+    applyMaintenance(!!s.maintenance_mode, s.maintenance_message);
   } catch (e) {
     console.warn(e);
   }

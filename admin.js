@@ -73,8 +73,33 @@ async function loadStats() {
     if (st.withdraw_hours != null) {
       document.getElementById("f-wd-hours").value = String(st.withdraw_hours);
     }
+    if (document.getElementById("f-maint")) {
+      document.getElementById("f-maint").value = st.maintenance_mode ? "1" : "0";
+    }
+    if (st.maintenance_message && document.getElementById("f-maint-msg")) {
+      document.getElementById("f-maint-msg").value = st.maintenance_message;
+    }
   } catch (_) {
     /* ignore */
+  }
+}
+
+async function saveMaintenance() {
+  const enabled = document.getElementById("f-maint").value === "1";
+  const message = document.getElementById("f-maint-msg").value.trim();
+  const msg = document.getElementById("maint-msg");
+  try {
+    const res = await api(`/api/admin/settings/maintenance?${adminQuery()}`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled, message: message || null }),
+    });
+    msg.textContent = res.maintenance_mode
+      ? "Техработы ВКЛ — пользователи видят заглушку"
+      : "Техработы ВЫКЛ — приложение работает";
+    toast(res.maintenance_mode ? "Техработы включены" : "Техработы выключены");
+  } catch (e) {
+    msg.textContent = e.message;
+    toast(e.message);
   }
 }
 
@@ -317,6 +342,7 @@ function init() {
 
   document.getElementById("btn-create")?.addEventListener("click", createTask);
   document.getElementById("btn-save-ref")?.addEventListener("click", saveReferralBonus);
+  document.getElementById("btn-save-maint")?.addEventListener("click", saveMaintenance);
   document.getElementById("btn-save-wd-hours")?.addEventListener("click", saveWithdrawHours);
   document.getElementById("btn-reload-wd")?.addEventListener("click", async () => {
     await loadWithdrawals();
