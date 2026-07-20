@@ -123,14 +123,32 @@ function tgUser() {
   };
 }
 
+function formatApiError(data, status) {
+  const detail = data?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((d) => d.msg || JSON.stringify(d)).join(", ");
+  }
+  if (detail && typeof detail === "object") return JSON.stringify(detail);
+  return `HTTP ${status}`;
+}
+
 async function api(path, opts = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Accept: "application/json", ...(opts.body ? { "Content-Type": "application/json" } : {}) },
-    ...opts,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: {
+        Accept: "application/json",
+        ...(opts.body ? { "Content-Type": "application/json" } : {}),
+      },
+      ...opts,
+    });
+  } catch (e) {
+    throw new Error("Нет связи с сервером");
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(data.detail || `HTTP ${res.status}`);
+    const err = new Error(formatApiError(data, res.status));
     err.data = data;
     throw err;
   }
@@ -192,10 +210,9 @@ function renderUser(user, tu) {
     animateNumber(headerBal, prevBal, nextBal);
     animateNumber(walletBal, prevBal, nextBal);
     animateNumber(statBal, prevBal, nextBal);
-    document.getElementById("header-balance")?.classList.add("pill--flash");
-    setTimeout(() => {
-      document.querySelector(".pill")?.classList.remove("pill--flash");
-    }, 600);
+    const pill = document.querySelector(".pill");
+    pill?.classList.add("pill--flash");
+    setTimeout(() => pill?.classList.remove("pill--flash"), 600);
   } else {
     set("header-balance-value", money(nextBal));
     set("wallet-balance", money(nextBal));

@@ -26,13 +26,18 @@ function adminQuery() {
 }
 
 async function api(path, opts = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      Accept: "application/json",
-      ...(opts.body ? { "Content-Type": "application/json" } : {}),
-    },
-    ...opts,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: {
+        Accept: "application/json",
+        ...(opts.body ? { "Content-Type": "application/json" } : {}),
+      },
+      ...opts,
+    });
+  } catch (e) {
+    throw new Error("Нет связи с сервером. Запустите backend.");
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const detail = data.detail;
@@ -40,7 +45,7 @@ async function api(path, opts = {}) {
       typeof detail === "string"
         ? detail
         : Array.isArray(detail)
-          ? detail.map((d) => d.msg).join(", ")
+          ? detail.map((d) => d.msg || JSON.stringify(d)).join(", ")
           : `HTTP ${res.status}`;
     throw new Error(msg);
   }

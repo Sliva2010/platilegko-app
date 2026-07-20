@@ -301,6 +301,16 @@ input {
 }
 
 .task__ico {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  position: relative;
+  overflow: hidden;
   transition: transform 0.25s var(--ease);
 }
 
@@ -314,19 +324,6 @@ input {
 
 .task:hover .task__pay {
   transform: scale(1.05);
-}
-
-.task__ico {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  display: grid;
-  place-items: center;
-  color: var(--text);
-  position: relative;
-  overflow: hidden;
 }
 
 .task__ico::after {
@@ -354,6 +351,8 @@ input {
 .task__ico svg {
   width: 20px;
   height: 20px;
+  position: relative;
+  z-index: 1;
 }
 
 .task__title {
