@@ -3,211 +3,188 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0a0b" />
+  <meta name="theme-color" content="#000000" />
   <title>ПлатиЛегко!</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app">
-    <header class="header">
-      <div class="header__brand">
-        <div class="logo-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2L3 7v5c0 5.25 3.75 10.13 9 11.25C17.25 22.13 21 17.25 21 12V7l-9-5z"/>
-            <path d="M9 12l2 2 4-4"/>
+    <header class="top">
+      <div class="top__left">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none">
+            <rect x="2" y="2" width="28" height="28" rx="8" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M10 20V12h4.2c2.1 0 3.4 1.1 3.4 2.85 0 1.2-.6 2.15-1.7 2.55L18.5 20h-2.3l-2.2-2.45H12.2V20H10zm2.2-4.2h1.85c.9 0 1.45-.45 1.45-1.2s-.55-1.15-1.45-1.15H12.2v2.35z" fill="currentColor"/>
           </svg>
         </div>
         <div>
-          <h1 class="header__title">ПлатиЛегко!</h1>
-          <p class="header__subtitle">Задания и заработок</p>
+          <div class="top__name">ПлатиЛегко</div>
+          <div class="top__tag">earn · tasks · cashout</div>
         </div>
       </div>
-      <div class="header__balance">
-        <span class="header__balance-label">Баланс</span>
-        <span class="header__balance-value" id="header-balance-value">0 ₽</span>
+      <div class="pill">
+        <span class="pill__label">Баланс</span>
+        <span class="pill__value" id="header-balance-value">0 ₽</span>
       </div>
     </header>
 
     <main class="main">
-      <!-- Призы -->
-      <section class="tab" id="tab-prizes" data-tab="prizes">
-        <div class="empty-card">
-          <div class="empty-card__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-              <rect x="3" y="8" width="18" height="13" rx="2"/>
-              <path d="M12 8V21M3 12h18M7.5 8a2.5 2.5 0 010-5C9.5 3 12 8 12 8s2.5-5 4.5-5a2.5 2.5 0 010 5"/>
+      <section class="tab" data-tab="prizes">
+        <div class="blank">
+          <div class="blank__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+              <path d="M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 15.9 7.2 18l.9-5.4L4.2 8.7l5.4-.8L12 3z"/>
             </svg>
           </div>
           <h2>Призы</h2>
-          <p>Розыгрыши и спецпредложения появятся здесь.</p>
+          <p>Раздел в подготовке. Розыгрыши появятся позже.</p>
         </div>
       </section>
 
-      <!-- Друзья / рефералы -->
-      <section class="tab" id="tab-friends" data-tab="friends">
-        <div class="ref-hero">
-          <p class="ref-hero__label">За каждого друга</p>
-          <p class="ref-hero__bonus" id="ref-bonus">+10 ₽</p>
-          <p class="ref-hero__hint">Друг переходит по вашей ссылке и запускает бота</p>
+      <section class="tab" data-tab="friends">
+        <div class="hero-card">
+          <div class="hero-card__kicker">Реферальная программа</div>
+          <div class="hero-card__value" id="ref-bonus">+10 ₽</div>
+          <p class="hero-card__sub">за каждого друга по вашей ссылке</p>
         </div>
-
-        <div class="stats-row">
-          <div class="stat-tile">
-            <span class="stat-tile__value" id="ref-count">0</span>
-            <span class="stat-tile__label">Приглашено</span>
+        <div class="grid-2">
+          <div class="metric">
+            <div class="metric__n" id="ref-count">0</div>
+            <div class="metric__l">Приглашено</div>
           </div>
-          <div class="stat-tile">
-            <span class="stat-tile__value" id="ref-earned">0 ₽</span>
-            <span class="stat-tile__label">С рефералов</span>
+          <div class="metric">
+            <div class="metric__n" id="ref-earned">0 ₽</div>
+            <div class="metric__l">Заработано</div>
           </div>
         </div>
-
-        <div class="panel">
-          <div class="panel__head">
-            <h3>Ваша ссылка</h3>
+        <div class="block">
+          <div class="block__title">Ссылка</div>
+          <div class="link-row">
+            <input id="ref-link" class="field" readonly value="—" />
+            <button type="button" class="btn btn--solid btn--compact" id="btn-copy-ref">Копия</button>
           </div>
-          <div class="ref-link-box">
-            <input type="text" id="ref-link" class="ref-link-input" readonly value="—" />
-            <button type="button" class="btn btn--primary btn--sm" id="btn-copy-ref">Копировать</button>
-          </div>
-          <button type="button" class="btn btn--secondary" id="btn-share-ref">Поделиться в Telegram</button>
+          <button type="button" class="btn btn--line" id="btn-share-ref">Поделиться</button>
         </div>
-
-        <div class="section-head section-head--tight">
-          <h2 class="section-title">Ваши друзья</h2>
-        </div>
-        <div class="friends-list" id="friends-list">
-          <p class="muted empty-state">Пока никого нет — отправьте ссылку</p>
+        <div class="section-label">Друзья</div>
+        <div id="friends-list" class="stack">
+          <p class="quiet center">Пока пусто</p>
         </div>
       </section>
 
-      <!-- Задания -->
-      <section class="tab tab--active" id="tab-tasks" data-tab="tasks">
+      <section class="tab tab--on" data-tab="tasks">
         <div class="section-head">
-          <h2 class="section-title">Задания</h2>
-          <p class="section-hint">Выполняй и пополняй баланс</p>
+          <h1>Задания</h1>
+          <p class="quiet">Подписка · проверка · выплата</p>
         </div>
-        <div class="tasks" id="tasks-list">
-          <div class="skeleton-card"></div>
-          <div class="skeleton-card"></div>
-          <div class="skeleton-card"></div>
-        </div>
-      </section>
-
-      <!-- Кошелёк -->
-      <section class="tab" id="tab-wallet" data-tab="wallet">
-        <div class="wallet-card">
-          <div class="wallet-card__top">
-            <span class="wallet-card__label">Доступно</span>
-            <span class="wallet-card__badge">RUB</span>
-          </div>
-          <p class="wallet-card__amount" id="wallet-balance">0 ₽</p>
-          <div class="wallet-card__actions">
-            <button type="button" class="btn btn--primary" id="btn-withdraw">Вывести</button>
-            <button type="button" class="btn btn--ghost" id="btn-refresh-wallet">Обновить</button>
-          </div>
-        </div>
-
-        <div class="wallet-mini-stats">
-          <div class="wallet-mini">
-            <span class="wallet-mini__label">Заданий</span>
-            <span class="wallet-mini__value" id="wallet-tasks">0</span>
-          </div>
-          <div class="wallet-mini">
-            <span class="wallet-mini__label">Друзей</span>
-            <span class="wallet-mini__value" id="wallet-refs">0</span>
-          </div>
-        </div>
-
-        <div class="section-head section-head--tight">
-          <h2 class="section-title">История операций</h2>
-        </div>
-        <div class="tx-list" id="tx-list">
-          <p class="muted empty-state">Пока нет операций</p>
+        <div id="tasks-list" class="stack">
+          <div class="skel"></div>
+          <div class="skel"></div>
         </div>
       </section>
 
-      <!-- Профиль -->
-      <section class="tab" id="tab-profile" data-tab="profile">
-        <div class="profile-card">
+      <section class="tab" data-tab="wallet">
+        <div class="wallet">
+          <div class="wallet__row">
+            <span class="quiet">Доступно</span>
+            <span class="wallet__cur">RUB</span>
+          </div>
+          <div class="wallet__sum" id="wallet-balance">0 ₽</div>
+          <div class="wallet__btns">
+            <button type="button" class="btn btn--solid" id="btn-withdraw">Вывести</button>
+            <button type="button" class="btn btn--line" id="btn-refresh-wallet">Обновить</button>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="metric">
+            <div class="metric__n" id="wallet-tasks">0</div>
+            <div class="metric__l">Заданий</div>
+          </div>
+          <div class="metric">
+            <div class="metric__n" id="wallet-refs">0</div>
+            <div class="metric__l">Друзей</div>
+          </div>
+        </div>
+        <div class="section-label">История</div>
+        <div id="tx-list" class="stack">
+          <p class="quiet center">Нет операций</p>
+        </div>
+      </section>
+
+      <section class="tab" data-tab="profile">
+        <div class="profile">
           <div class="avatar" id="profile-avatar-wrap">
             <img id="profile-avatar-img" class="avatar__img" alt="" hidden />
-            <span class="avatar__fallback" id="profile-avatar-fallback">?</span>
+            <span class="avatar__fb" id="profile-avatar-fallback">?</span>
           </div>
-          <div class="profile-card__info">
-            <h2 class="profile-card__name" id="profile-name">Гость</h2>
-            <p class="profile-card__meta" id="profile-username">@—</p>
-            <p class="profile-card__id muted" id="profile-id">ID: —</p>
+          <div>
+            <div class="profile__name" id="profile-name">Гость</div>
+            <div class="quiet" id="profile-username">@—</div>
+            <div class="quiet profile__id" id="profile-id">ID: —</div>
           </div>
         </div>
-        <div class="stats-row">
-          <div class="stat-tile">
-            <span class="stat-tile__value" id="stat-balance">0 ₽</span>
-            <span class="stat-tile__label">Баланс</span>
+        <div class="grid-3">
+          <div class="metric">
+            <div class="metric__n" id="stat-balance">0 ₽</div>
+            <div class="metric__l">Баланс</div>
           </div>
-          <div class="stat-tile">
-            <span class="stat-tile__value" id="stat-tasks">0</span>
-            <span class="stat-tile__label">Выполнено</span>
+          <div class="metric">
+            <div class="metric__n" id="stat-tasks">0</div>
+            <div class="metric__l">Сделано</div>
           </div>
-          <div class="stat-tile">
-            <span class="stat-tile__value" id="stat-refs">0</span>
-            <span class="stat-tile__label">Друзья</span>
+          <div class="metric">
+            <div class="metric__n" id="stat-refs">0</div>
+            <div class="metric__l">Друзья</div>
           </div>
         </div>
       </section>
     </main>
 
-    <nav class="nav" aria-label="Навигация">
-      <button type="button" class="nav__item" data-nav="prizes">
-        <span class="nav__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8V21M7.5 8a2.5 2.5 0 010-5C9.5 3 12 8 12 8s2.5-5 4.5-5a2.5 2.5 0 010 5"/></svg>
-        </span>
-        <span class="nav__label">Призы</span>
+    <nav class="dock">
+      <button type="button" class="dock__btn" data-nav="prizes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 15.9 7.2 18l.9-5.4L4.2 8.7l5.4-.8L12 3z"/></svg>
+        <span>Призы</span>
       </button>
-      <button type="button" class="nav__item" data-nav="friends">
-        <span class="nav__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-        </span>
-        <span class="nav__label">Друзья</span>
+      <button type="button" class="dock__btn" data-nav="friends">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="3.5"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a3.5 3.5 0 010 6.74"/></svg>
+        <span>Друзья</span>
       </button>
-      <button type="button" class="nav__item nav__item--active" data-nav="tasks">
-        <span class="nav__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-        </span>
-        <span class="nav__label">Задания</span>
+      <button type="button" class="dock__btn dock__btn--on" data-nav="tasks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5"/></svg>
+        <span>Задания</span>
       </button>
-      <button type="button" class="nav__item" data-nav="wallet">
-        <span class="nav__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><circle cx="16" cy="14" r="1.5" fill="currentColor" stroke="none"/></svg>
-        </span>
-        <span class="nav__label">Кошелёк</span>
+      <button type="button" class="dock__btn" data-nav="wallet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="17" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+        <span>Кошелёк</span>
       </button>
-      <button type="button" class="nav__item" data-nav="profile">
-        <span class="nav__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </span>
-        <span class="nav__label">Профиль</span>
+      <button type="button" class="dock__btn" data-nav="profile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg>
+        <span>Профиль</span>
       </button>
     </nav>
   </div>
 
-  <!-- Task modal -->
-  <div class="modal" id="task-modal" hidden>
-    <div class="modal__backdrop" data-close-modal></div>
-    <div class="modal__sheet" role="dialog" aria-modal="true">
-      <div class="modal__handle"></div>
-      <button type="button" class="modal__close" data-close-modal aria-label="Закрыть">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+  <div class="sheet" id="task-modal" hidden>
+    <div class="sheet__dim" data-close-modal></div>
+    <div class="sheet__panel">
+      <div class="sheet__grab"></div>
+      <button type="button" class="sheet__x" data-close-modal aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
-      <p class="modal__reward" id="modal-reward">+0 ₽</p>
-      <h2 class="modal__title" id="modal-title">Задание</h2>
-      <p class="modal__desc" id="modal-desc"></p>
-      <div class="modal__actions">
-        <button type="button" class="btn btn--primary" id="btn-do-task">Выполнить</button>
-        <button type="button" class="btn btn--secondary" id="btn-check-task">Проверить</button>
+      <div class="sheet__type" id="modal-type">Подписка</div>
+      <div class="sheet__pay" id="modal-reward">+0 ₽</div>
+      <h2 class="sheet__title" id="modal-title">Задание</h2>
+      <p class="sheet__text" id="modal-desc"></p>
+      <ol class="steps" id="modal-steps">
+        <li>Нажмите «Выполнить» — откроется канал</li>
+        <li>Подайте заявку на вступление / подпишитесь</li>
+        <li>Вернитесь и нажмите «Проверить»</li>
+      </ol>
+      <div class="sheet__actions">
+        <button type="button" class="btn btn--solid" id="btn-do-task">Выполнить</button>
+        <button type="button" class="btn btn--line" id="btn-check-task">Проверить</button>
       </div>
-      <p class="modal__hint muted">Кнопки пока в разработке — подключим позже.</p>
+      <p class="sheet__note quiet" id="modal-status"></p>
     </div>
   </div>
 

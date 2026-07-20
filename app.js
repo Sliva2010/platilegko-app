@@ -1,63 +1,26 @@
 /**
- * ПлатиЛегко! Mini App
- * Для GitHub Pages + локальный API: подставьте ngrok в API_BASE.
+ * ПлатиЛегко Mini App
+ * API_BASE — для Pages замените на ngrok HTTPS.
  */
 const API_BASE = "http://127.0.0.1:8000";
 
-const DEMO_TASKS = [
-  {
-    id: 1,
-    title: "Подписаться на канал",
-    description: "Подпишитесь на официальный канал проекта и подтвердите подписку.",
-    reward: 15,
-  },
-  {
-    id: 2,
-    title: "Пригласить друга",
-    description: "Пригласите друга по реферальной ссылке.",
-    reward: 50,
-  },
-  {
-    id: 3,
-    title: "Оставить отзыв",
-    description: "Напишите короткий отзыв о сервисе.",
-    reward: 25,
-  },
-  {
-    id: 4,
-    title: "Заполнить профиль",
-    description: "Укажите имя и username в Telegram.",
-    reward: 10,
-  },
-  {
-    id: 5,
-    title: "Ежедневный вход",
-    description: "Откройте Mini App сегодня.",
-    reward: 5,
-  },
-];
-
-const TASK_ICON_SVG = `
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-  <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-</svg>`;
+const ICO_SUB = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16v11a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/><path d="M8 7V5a4 4 0 018 0v2"/><circle cx="12" cy="13" r="1.2" fill="currentColor" stroke="none"/></svg>`;
+const ICO_DONE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 13l4 4L19 7"/></svg>`;
 
 const state = {
   user: null,
   tasks: [],
   selectedTask: null,
-  referrals: [],
-  photoUrl: null,
+  verifying: false,
 };
 
 const tg = window.Telegram?.WebApp;
 
-function formatMoney(value) {
-  const n = Number(value) || 0;
-  return `${n.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
+function money(v) {
+  return `${Number(v || 0).toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
 }
 
-function formatDate(iso) {
+function fmtDate(iso) {
   if (!iso) return "";
   try {
     return new Date(iso).toLocaleString("ru-RU", {
@@ -71,51 +34,32 @@ function formatDate(iso) {
   }
 }
 
-function showToast(message, ms = 2400) {
-  const el = document.getElementById("toast");
-  if (!el) return;
-  el.textContent = message;
-  el.hidden = false;
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => {
-    el.hidden = true;
-  }, ms);
-}
-
-function escapeHtml(str) {
-  return String(str)
+function esc(s) {
+  return String(s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
 
-function applyTelegramTheme() {
-  if (!tg) return;
-  const p = tg.themeParams || {};
-  const root = document.documentElement;
-  const map = {
-    bg_color: "--tg-theme-bg-color",
-    text_color: "--tg-theme-text-color",
-    hint_color: "--tg-theme-hint-color",
-    link_color: "--tg-theme-link-color",
-    button_color: "--tg-theme-button-color",
-    button_text_color: "--tg-theme-button-text-color",
-    secondary_bg_color: "--tg-theme-secondary-bg-color",
-  };
-  Object.entries(map).forEach(([k, cssVar]) => {
-    if (p[k]) root.style.setProperty(cssVar, p[k]);
-  });
+function toast(msg, ms = 2600) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.hidden = false;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => {
+    el.hidden = true;
+  }, ms);
 }
 
-function getTelegramUser() {
+function tgUser() {
   const u = tg?.initDataUnsafe?.user;
   if (u) {
     return {
       user_id: u.id,
       username: u.username || null,
       first_name: u.first_name || "Пользователь",
-      last_name: u.last_name || "",
       photo_url: u.photo_url || null,
     };
   }
@@ -123,50 +67,44 @@ function getTelegramUser() {
     user_id: 0,
     username: "preview",
     first_name: "Гость",
-    last_name: "",
     photo_url: null,
   };
 }
 
-async function apiGet(path) {
+async function api(path, opts = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json", ...(opts.body ? { "Content-Type": "application/json" } : {}) },
+    ...opts,
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.detail || `HTTP ${res.status}`);
+    err.data = data;
+    throw err;
+  }
+  return data;
 }
 
 function switchTab(name) {
-  document.querySelectorAll(".tab").forEach((tab) => {
-    tab.classList.toggle("tab--active", tab.dataset.tab === name);
+  document.querySelectorAll(".tab").forEach((t) => {
+    t.classList.toggle("tab--on", t.dataset.tab === name);
   });
-  document.querySelectorAll(".nav__item").forEach((btn) => {
-    btn.classList.toggle("nav__item--active", btn.dataset.nav === name);
+  document.querySelectorAll(".dock__btn").forEach((b) => {
+    b.classList.toggle("dock__btn--on", b.dataset.nav === name);
   });
-  try {
-    tg?.HapticFeedback?.selectionChanged?.();
-  } catch (_) {
-    /* ignore */
-  }
-  if (name === "wallet") loadTransactions();
-  if (name === "friends") loadReferrals();
+  if (name === "wallet") loadTx();
+  if (name === "friends") loadRefs();
 }
 
-function setAvatar(photoUrl, fallbackLetter) {
+function setAvatar(url, letter) {
   const img = document.getElementById("profile-avatar-img");
   const fb = document.getElementById("profile-avatar-fallback");
-  if (!img || !fb) return;
-
-  const letter = (fallbackLetter || "?").toUpperCase();
-  fb.textContent = letter;
-
-  if (!photoUrl) {
+  fb.textContent = (letter || "?").toUpperCase();
+  if (!url) {
     img.hidden = true;
-    img.removeAttribute("src");
     fb.hidden = false;
     return;
   }
-
   img.onload = () => {
     img.hidden = false;
     fb.hidden = true;
@@ -175,305 +113,319 @@ function setAvatar(photoUrl, fallbackLetter) {
     img.hidden = true;
     fb.hidden = false;
   };
-  img.src = photoUrl;
+  img.src = url;
 }
 
-function resolvePhotoUrl(tgUser, userId) {
-  if (tgUser.photo_url) return tgUser.photo_url;
-  if (userId) return `${API_BASE}/api/user/${userId}/photo`;
-  return null;
-}
-
-function renderUser(user, tgUser) {
+function renderUser(user, tu) {
   state.user = user;
-  const balance = formatMoney(user.balance ?? 0);
-  const name = user.first_name || tgUser?.first_name || "Гость";
-  const username = user.username
+  const bal = money(user.balance);
+  const name = user.first_name || tu?.first_name || "Гость";
+  const un = user.username
     ? `@${user.username}`
-    : tgUser?.username
-      ? `@${tgUser.username}`
+    : tu?.username
+      ? `@${tu.username}`
       : "@—";
   const refs = user.referrals_count ?? 0;
-  const letter = (name[0] || "?").toUpperCase();
-
-  const set = (id, text) => {
+  const set = (id, v) => {
     const el = document.getElementById(id);
-    if (el) el.textContent = text;
+    if (el) el.textContent = v;
   };
-
-  set("header-balance-value", balance);
-  set("wallet-balance", balance);
+  set("header-balance-value", bal);
+  set("wallet-balance", bal);
   set("profile-name", name);
-  set("profile-username", username);
+  set("profile-username", un);
   set("profile-id", `ID: ${user.user_id ?? "—"}`);
-  set("stat-balance", balance);
+  set("stat-balance", bal);
   set("stat-tasks", String(user.tasks_completed ?? 0));
   set("stat-refs", String(refs));
   set("wallet-tasks", String(user.tasks_completed ?? 0));
   set("wallet-refs", String(refs));
   set("ref-count", String(refs));
-  set("ref-earned", formatMoney(refs * (user.referral_bonus ?? 10)));
-  if (user.referral_bonus != null) {
-    set("ref-bonus", `+${formatMoney(user.referral_bonus)}`);
-  }
+  set("ref-earned", money(refs * (user.referral_bonus ?? 10)));
+  if (user.referral_bonus != null) set("ref-bonus", `+${money(user.referral_bonus)}`);
+  const link = document.getElementById("ref-link");
+  if (link) link.value = user.referral_link || "Ссылка после /start";
+  const photo = tu?.photo_url || (user.user_id ? `${API_BASE}/api/user/${user.user_id}/photo` : null);
+  setAvatar(photo, name[0]);
+}
 
-  const linkInput = document.getElementById("ref-link");
-  if (linkInput) {
-    linkInput.value = user.referral_link || "Ссылка появится после /start в боте";
-  }
-
-  const photo = resolvePhotoUrl(tgUser || getTelegramUser(), user.user_id);
-  state.photoUrl = photo;
-  setAvatar(photo, letter);
+function typeLabel(t) {
+  if (t === "subscription" || !t) return "Подписка";
+  return t;
 }
 
 function renderTasks(tasks) {
   state.tasks = tasks;
-  const list = document.getElementById("tasks-list");
-  if (!list) return;
-
+  const box = document.getElementById("tasks-list");
   if (!tasks.length) {
-    list.innerHTML = `<p class="muted empty-state">Заданий пока нет</p>`;
+    box.innerHTML = `<p class="quiet center">Пока нет активных заданий</p>`;
     return;
   }
-
-  list.innerHTML = tasks
-    .map(
-      (t) => `
-      <button type="button" class="task-card" data-task-id="${t.id}">
-        <div class="task-card__icon">${TASK_ICON_SVG}</div>
-        <div class="task-card__body">
-          <div class="task-card__title">${escapeHtml(t.title)}</div>
-          <div class="task-card__desc">${escapeHtml(t.description || "")}</div>
+  box.innerHTML = tasks
+    .map((t) => {
+      const done = !!t.completed;
+      return `
+      <button type="button" class="task ${done ? "task--done" : ""}" data-id="${t.id}">
+        <div class="task__ico">${done ? ICO_DONE : ICO_SUB}</div>
+        <div>
+          <div class="task__title">${esc(t.title)}</div>
+          <div class="task__meta">${typeLabel(t.task_type)}${done ? " · выполнено" : ""}</div>
         </div>
-        <div class="task-card__reward">+${formatMoney(t.reward)}</div>
-      </button>
-    `
-    )
+        <div class="task__pay">+${money(t.reward)}</div>
+      </button>`;
+    })
     .join("");
-
-  list.querySelectorAll(".task-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      const id = Number(card.dataset.taskId);
+  box.querySelectorAll(".task").forEach((el) => {
+    el.addEventListener("click", () => {
+      const id = Number(el.dataset.id);
       const task = state.tasks.find((x) => Number(x.id) === id);
-      if (task) openTaskModal(task);
+      if (task) openModal(task);
     });
   });
 }
 
+function openModal(task) {
+  state.selectedTask = task;
+  document.getElementById("modal-type").textContent = typeLabel(task.task_type);
+  document.getElementById("modal-reward").textContent = `+${money(task.reward)}`;
+  document.getElementById("modal-title").textContent = task.title;
+  document.getElementById("modal-desc").textContent =
+    task.description ||
+    "Подпишитесь на канал (или подайте заявку) и нажмите «Проверить».";
+  document.getElementById("modal-status").textContent = task.completed
+    ? "Уже выполнено"
+    : "";
+  const doBtn = document.getElementById("btn-do-task");
+  const checkBtn = document.getElementById("btn-check-task");
+  doBtn.disabled = !!task.completed;
+  checkBtn.disabled = !!task.completed;
+  document.getElementById("task-modal").hidden = false;
+}
+
+function closeModal() {
+  document.getElementById("task-modal").hidden = true;
+  state.selectedTask = null;
+}
+
+function openChannelLink(url) {
+  if (!url) {
+    toast("Ссылка на канал не задана");
+    return;
+  }
+  let link = url.trim();
+  if (!link.startsWith("http")) {
+    if (link.startsWith("@")) link = `https://t.me/${link.slice(1)}`;
+    else if (link.startsWith("t.me/")) link = `https://${link}`;
+  }
+  try {
+    if (tg?.openTelegramLink && /t\.me\//i.test(link)) {
+      tg.openTelegramLink(link);
+      return;
+    }
+    if (tg?.openLink) {
+      tg.openLink(link);
+      return;
+    }
+  } catch (_) {
+    /* fallthrough */
+  }
+  window.open(link, "_blank");
+}
+
+async function doTask() {
+  const task = state.selectedTask;
+  if (!task || task.completed) return;
+  document.getElementById("modal-status").textContent =
+    "Откройте канал, подайте заявку / подпишитесь, затем «Проверить».";
+  openChannelLink(task.channel_link);
+}
+
+async function checkTask() {
+  const task = state.selectedTask;
+  if (!task || task.completed || state.verifying) return;
+  const uid = state.user?.user_id || tgUser().user_id;
+  if (!uid) {
+    toast("Не удалось определить пользователя");
+    return;
+  }
+  state.verifying = true;
+  const status = document.getElementById("modal-status");
+  status.textContent = "Проверяем подписку…";
+  document.getElementById("btn-check-task").disabled = true;
+  try {
+    const res = await api(`/api/tasks/${task.id}/verify`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: uid }),
+    });
+    status.textContent = res.message || "";
+    toast(res.message || (res.ok ? "Готово" : "Не подтверждено"));
+    if (res.ok && res.user) {
+      renderUser(res.user, tgUser());
+      task.completed = true;
+      document.getElementById("btn-do-task").disabled = true;
+      document.getElementById("btn-check-task").disabled = true;
+      await loadTasks();
+    } else {
+      document.getElementById("btn-check-task").disabled = false;
+    }
+  } catch (e) {
+    status.textContent = e.message || "Ошибка проверки";
+    toast(e.message || "Ошибка");
+    document.getElementById("btn-check-task").disabled = false;
+  } finally {
+    state.verifying = false;
+  }
+}
+
 function renderFriends(list) {
   const box = document.getElementById("friends-list");
-  if (!box) return;
   if (!list.length) {
-    box.innerHTML = `<p class="muted empty-state">Пока никого нет — отправьте ссылку</p>`;
+    box.innerHTML = `<p class="quiet center">Пока пусто</p>`;
     return;
   }
   box.innerHTML = list
     .map((f) => {
       const name = f.first_name || "Пользователь";
-      const un = f.username ? `@${f.username}` : `ID ${f.user_id}`;
-      const letter = (name[0] || "?").toUpperCase();
-      return `
-        <div class="friend-row">
-          <div class="avatar avatar--sm">
-            <span class="avatar__fallback">${letter}</span>
-          </div>
-          <div>
-            <div class="friend-row__name">${escapeHtml(name)}</div>
-            <div class="friend-row__meta">${escapeHtml(un)} · ${formatDate(f.created_at)}</div>
-          </div>
-        </div>`;
+      const meta = f.username ? `@${f.username}` : `ID ${f.user_id}`;
+      return `<div class="friend">
+        <div class="avatar avatar--sm"><span class="avatar__fb">${esc(name[0] || "?")}</span></div>
+        <div style="flex:1;min-width:0">
+          <div class="friend__n">${esc(name)}</div>
+          <div class="friend__m">${esc(meta)} · ${fmtDate(f.created_at)}</div>
+        </div>
+      </div>`;
     })
     .join("");
 }
 
-function renderTransactions(txs) {
+function renderTx(txs) {
   const box = document.getElementById("tx-list");
-  if (!box) return;
   if (!txs.length) {
-    box.innerHTML = `<p class="muted empty-state">Пока нет операций</p>`;
+    box.innerHTML = `<p class="quiet center">Нет операций</p>`;
     return;
   }
-  const typeLabel = {
-    reward: "Награда",
-    referral: "Реферал",
-    withdraw: "Вывод",
-  };
+  const labels = { reward: "Награда", referral: "Реферал", withdraw: "Вывод" };
   box.innerHTML = txs
     .map((t) => {
-      const amount = Number(t.amount) || 0;
-      const plus = amount >= 0;
-      const title =
-        t.description || typeLabel[t.type] || t.type || "Операция";
-      return `
-        <div class="tx-row">
-          <div>
-            <div class="tx-row__title">${escapeHtml(title)}</div>
-            <div class="tx-row__date">${formatDate(t.created_at)}</div>
-          </div>
-          <div class="tx-row__amount ${plus ? "tx-row__amount--plus" : "tx-row__amount--minus"}">
-            ${plus ? "+" : ""}${formatMoney(amount)}
-          </div>
-        </div>`;
+      const a = Number(t.amount) || 0;
+      const title = t.description || labels[t.type] || t.type;
+      return `<div class="tx">
+        <div>
+          <div class="tx__t">${esc(title)}</div>
+          <div class="tx__d">${fmtDate(t.created_at)}</div>
+        </div>
+        <div class="tx__a">${a >= 0 ? "+" : ""}${money(a)}</div>
+      </div>`;
     })
     .join("");
 }
 
-function openTaskModal(task) {
-  state.selectedTask = task;
-  document.getElementById("modal-title").textContent = task.title;
-  document.getElementById("modal-desc").textContent = task.description || "";
-  document.getElementById("modal-reward").textContent = `+${formatMoney(task.reward)}`;
-  document.getElementById("task-modal").hidden = false;
+async function loadTasks() {
+  const uid = state.user?.user_id || tgUser().user_id;
   try {
-    tg?.HapticFeedback?.impactOccurred?.("light");
-  } catch (_) {
-    /* ignore */
+    const q = uid ? `?user_id=${uid}` : "";
+    const data = await api(`/api/tasks${q}`);
+    renderTasks(data.tasks || []);
+  } catch (e) {
+    console.warn(e);
+    renderTasks([]);
+    toast("Нет связи с сервером");
   }
 }
 
-function closeTaskModal() {
-  document.getElementById("task-modal").hidden = true;
-  state.selectedTask = null;
-}
-
-async function loadReferrals() {
-  const uid = state.user?.user_id || getTelegramUser().user_id;
+async function loadRefs() {
+  const uid = state.user?.user_id || tgUser().user_id;
   if (!uid) return;
   try {
-    const data = await apiGet(`/api/user/${uid}/referrals`);
-    state.referrals = data.referrals || [];
+    const data = await api(`/api/user/${uid}/referrals`);
     document.getElementById("ref-count").textContent = String(data.count ?? 0);
-    document.getElementById("ref-earned").textContent = formatMoney(
+    document.getElementById("ref-earned").textContent = money(
       (data.count || 0) * (data.bonus_per_invite || 10)
     );
-    document.getElementById("ref-bonus").textContent = `+${formatMoney(
-      data.bonus_per_invite || 10
-    )}`;
-    if (data.referral_link) {
-      document.getElementById("ref-link").value = data.referral_link;
-    }
-    renderFriends(state.referrals);
+    if (data.referral_link) document.getElementById("ref-link").value = data.referral_link;
+    renderFriends(data.referrals || []);
   } catch (e) {
-    console.warn("referrals", e);
+    console.warn(e);
   }
 }
 
-async function loadTransactions() {
-  const uid = state.user?.user_id || getTelegramUser().user_id;
+async function loadTx() {
+  const uid = state.user?.user_id || tgUser().user_id;
   if (!uid) return;
   try {
-    const data = await apiGet(`/api/user/${uid}/transactions`);
-    renderTransactions(data.transactions || []);
+    const data = await api(`/api/user/${uid}/transactions`);
+    renderTx(data.transactions || []);
   } catch (e) {
-    console.warn("transactions", e);
+    console.warn(e);
   }
-}
-
-function bindNav() {
-  document.querySelectorAll(".nav__item").forEach((btn) => {
-    btn.addEventListener("click", () => switchTab(btn.dataset.nav));
-  });
-}
-
-function bindModal() {
-  document.querySelectorAll("[data-close-modal]").forEach((el) => {
-    el.addEventListener("click", closeTaskModal);
-  });
-  document.getElementById("btn-do-task")?.addEventListener("click", () => {
-    showToast("«Выполнить» — скоро подключим");
-  });
-  document.getElementById("btn-check-task")?.addEventListener("click", () => {
-    showToast("«Проверить» — скоро подключим");
-  });
-}
-
-function bindWalletAndRefs() {
-  document.getElementById("btn-withdraw")?.addEventListener("click", () => {
-    showToast("Вывод средств — скоро");
-  });
-  document.getElementById("btn-refresh-wallet")?.addEventListener("click", async () => {
-    await loadData();
-    await loadTransactions();
-    showToast("Обновлено");
-  });
-
-  document.getElementById("btn-copy-ref")?.addEventListener("click", async () => {
-    const link = document.getElementById("ref-link")?.value;
-    if (!link || link.startsWith("Ссылка")) {
-      showToast("Ссылка пока недоступна");
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(link);
-      showToast("Ссылка скопирована");
-    } catch {
-      const input = document.getElementById("ref-link");
-      input?.select();
-      showToast("Скопируйте ссылку вручную");
-    }
-  });
-
-  document.getElementById("btn-share-ref")?.addEventListener("click", () => {
-    const link = document.getElementById("ref-link")?.value;
-    if (!link || link.startsWith("Ссылка")) {
-      showToast("Ссылка пока недоступна");
-      return;
-    }
-    const text = `Зарабатывай вместе со мной в ПлатиЛегко!\n${link}`;
-    if (tg?.openTelegramLink) {
-      tg.openTelegramLink(
-        `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Зарабатывай вместе со мной в ПлатиЛегко!")}`
-      );
-    } else {
-      window.open(
-        `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`,
-        "_blank"
-      );
-    }
-  });
 }
 
 async function loadData() {
-  const tgUser = getTelegramUser();
-
+  const tu = tgUser();
   renderUser(
     {
-      user_id: tgUser.user_id,
-      username: tgUser.username,
-      first_name: tgUser.first_name,
+      user_id: tu.user_id,
+      username: tu.username,
+      first_name: tu.first_name,
       balance: 0,
       tasks_completed: 0,
       referrals_count: 0,
       referral_bonus: 10,
     },
-    tgUser
+    tu
   );
-
-  try {
-    const tasksRes = await apiGet("/api/tasks");
-    renderTasks(tasksRes.tasks || []);
-  } catch (e) {
-    console.warn("API tasks unavailable", e);
-    renderTasks(DEMO_TASKS);
-    showToast("Офлайн-режим: демо-задания");
-  }
-
-  if (tgUser.user_id) {
+  if (tu.user_id) {
     try {
-      const userRes = await apiGet(`/api/user/${tgUser.user_id}`);
+      const u = await api(`/api/user/${tu.user_id}`);
       renderUser(
         {
-          ...userRes,
-          first_name: userRes.first_name || tgUser.first_name,
-          username: userRes.username || tgUser.username,
+          ...u,
+          first_name: u.first_name || tu.first_name,
+          username: u.username || tu.username,
         },
-        tgUser
+        tu
       );
     } catch (e) {
-      console.warn("API user unavailable", e);
+      console.warn(e);
     }
   }
+  await loadTasks();
+}
+
+function bind() {
+  document.querySelectorAll(".dock__btn").forEach((b) => {
+    b.addEventListener("click", () => switchTab(b.dataset.nav));
+  });
+  document.querySelectorAll("[data-close-modal]").forEach((el) => {
+    el.addEventListener("click", closeModal);
+  });
+  document.getElementById("btn-do-task")?.addEventListener("click", doTask);
+  document.getElementById("btn-check-task")?.addEventListener("click", checkTask);
+  document.getElementById("btn-withdraw")?.addEventListener("click", () => {
+    toast("Вывод — скоро");
+  });
+  document.getElementById("btn-refresh-wallet")?.addEventListener("click", async () => {
+    await loadData();
+    await loadTx();
+    toast("Обновлено");
+  });
+  document.getElementById("btn-copy-ref")?.addEventListener("click", async () => {
+    const v = document.getElementById("ref-link")?.value;
+    if (!v || v.startsWith("Ссылка")) return toast("Ссылка недоступна");
+    try {
+      await navigator.clipboard.writeText(v);
+      toast("Скопировано");
+    } catch {
+      toast("Скопируйте вручную");
+    }
+  });
+  document.getElementById("btn-share-ref")?.addEventListener("click", () => {
+    const v = document.getElementById("ref-link")?.value;
+    if (!v || v.startsWith("Ссылка")) return toast("Ссылка недоступна");
+    const url = `https://t.me/share/url?url=${encodeURIComponent(v)}&text=${encodeURIComponent("ПлатиЛегко — зарабатывай на заданиях")}`;
+    if (tg?.openTelegramLink) tg.openTelegramLink(url);
+    else window.open(url, "_blank");
+  });
 }
 
 function init() {
@@ -481,17 +433,13 @@ function init() {
     tg.ready();
     tg.expand();
     try {
-      tg.setHeaderColor("secondary_bg_color");
-      tg.setBackgroundColor("bg_color");
+      tg.setHeaderColor("#000000");
+      tg.setBackgroundColor("#000000");
     } catch (_) {
-      /* older clients */
+      /* ignore */
     }
-    applyTelegramTheme();
   }
-
-  bindNav();
-  bindModal();
-  bindWalletAndRefs();
+  bind();
   loadData();
 }
 

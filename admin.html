@@ -3,82 +3,75 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0a0b" />
-  <title>ПлатиЛегко! Admin</title>
+  <meta name="theme-color" content="#000000" />
+  <title>ПлатиЛегко Admin</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
-  <div class="admin" id="app">
-    <header class="admin-header">
+  <div class="wrap">
+    <header class="head">
       <div>
-        <p class="admin-header__eyebrow">ПлатиЛегко!</p>
-        <h1>Админ-панель</h1>
+        <div class="head__kicker">ПлатиЛегко</div>
+        <h1>Админ</h1>
       </div>
-      <div class="admin-badge" id="access-badge">Проверка…</div>
+      <div class="badge" id="access-badge">…</div>
     </header>
 
     <div id="denied" class="denied" hidden>
       <h2>Нет доступа</h2>
-      <p>Эта панель доступна только администратору.</p>
+      <p>Панель только для администратора.</p>
     </div>
 
     <div id="panel" hidden>
       <section class="stats" id="stats">
-        <div class="stat-card">
-          <span class="stat-card__label">Пользователи</span>
-          <span class="stat-card__value" id="s-users">—</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__label">Задания</span>
-          <span class="stat-card__value" id="s-tasks">—</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__label">Операции</span>
-          <span class="stat-card__value" id="s-tx">—</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__label">Сумма балансов</span>
-          <span class="stat-card__value" id="s-bal">—</span>
-        </div>
+        <div class="stat"><span class="stat__l">Юзеры</span><span class="stat__v" id="s-users">—</span></div>
+        <div class="stat"><span class="stat__l">Задания</span><span class="stat__v" id="s-tasks">—</span></div>
+        <div class="stat"><span class="stat__l">Выполнения</span><span class="stat__v" id="s-done">—</span></div>
+        <div class="stat"><span class="stat__l">Балансы</span><span class="stat__v" id="s-bal">—</span></div>
       </section>
 
-      <section class="menu">
-        <h2 class="menu__title">Управление</h2>
-        <button type="button" class="menu-item" data-action="tasks">
-          <span class="menu-item__text">
-            <strong>Задания</strong>
-            <small>Список, создание, награды</small>
-          </span>
-          <span class="menu-item__soon">Скоро</span>
-        </button>
-        <button type="button" class="menu-item" data-action="users">
-          <span class="menu-item__text">
-            <strong>Пользователи</strong>
-            <small>Балансы, блокировки, поиск</small>
-          </span>
-          <span class="menu-item__soon">Скоро</span>
-        </button>
-        <button type="button" class="menu-item" data-action="payouts">
-          <span class="menu-item__text">
-            <strong>Выплаты</strong>
-            <small>Заявки на вывод</small>
-          </span>
-          <span class="menu-item__soon">Скоро</span>
-        </button>
-        <button type="button" class="menu-item" data-action="settings">
-          <span class="menu-item__text">
-            <strong>Настройки</strong>
-            <small>Реферальный бонус, лимиты</small>
-          </span>
-          <span class="menu-item__soon">Скоро</span>
-        </button>
+      <section class="card">
+        <h2 class="card__title">Новое задание</h2>
+        <p class="hint">Тип: подписка на канал. Бот должен быть админом канала.</p>
+
+        <label class="lab">Тип</label>
+        <select id="f-type" class="inp">
+          <option value="subscription" selected>Подписка на канал</option>
+        </select>
+
+        <label class="lab">Название</label>
+        <input id="f-title" class="inp" type="text" placeholder="Подписка на канал X" maxlength="200" />
+
+        <label class="lab">Описание (необязательно)</label>
+        <textarea id="f-desc" class="inp inp--area" rows="2" placeholder="Кратко, что сделать"></textarea>
+
+        <label class="lab">Оплата, ₽</label>
+        <input id="f-reward" class="inp" type="number" min="0.01" step="0.01" placeholder="15" />
+
+        <label class="lab">Ссылка для пользователя</label>
+        <input id="f-link" class="inp" type="text" placeholder="https://t.me/+xxxx или https://t.me/channel" />
+        <p class="hint">Эту ссылку откроет кнопка «Выполнить» (заявка / подписка).</p>
+
+        <label class="lab">ID канала для проверки</label>
+        <input id="f-channel" class="inp" type="text" placeholder="@channel или -1001234567890" />
+        <p class="hint">Нужен для getChatMember. Для приватных каналов — числовой id (-100…).</p>
+
+        <button type="button" class="btn" id="btn-create">Создать задание</button>
+        <p class="form-msg" id="form-msg"></p>
       </section>
 
-      <p class="footer-note">Отдельное приложение. Логику модулей подключим по мере разработки.</p>
+      <section class="card">
+        <div class="card__row">
+          <h2 class="card__title">Задания</h2>
+          <button type="button" class="btn btn--ghost btn--sm" id="btn-reload">Обновить</button>
+        </div>
+        <div id="tasks-admin" class="list">
+          <p class="hint">Загрузка…</p>
+        </div>
+      </section>
     </div>
   </div>
-
   <div class="toast" id="toast" hidden></div>
   <script src="admin.js"></script>
 </body>
