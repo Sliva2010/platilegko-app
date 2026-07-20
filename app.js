@@ -1,8 +1,11 @@
 /**
  * ПлатиЛегко Mini App
- * API_BASE — для Pages замените на ngrok HTTPS.
+ * API_BASE берётся из config.js (start_bot.py пишет публичный HTTPS URL).
  */
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = (
+  window.PLATI_API_BASE ||
+  "http://127.0.0.1:8000"
+).replace(/\/$/, "");
 
 const ICO_SUB = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16v11a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/><path d="M8 7V5a4 4 0 018 0v2"/><circle cx="12" cy="13" r="1.2" fill="currentColor" stroke="none"/></svg>`;
 const ICO_DONE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 13l4 4L19 7"/></svg>`;
@@ -156,7 +159,9 @@ async function api(path, opts = {}) {
       headers,
     });
   } catch (e) {
-    throw new Error("Нет связи с сервером");
+    throw new Error(
+      "Нет связи с сервером. Админ должен запустить бота с туннелем (start_bot.py)."
+    );
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

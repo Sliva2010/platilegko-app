@@ -1,4 +1,7 @@
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = (window.PLATI_API_BASE || "http://127.0.0.1:8000").replace(
+  /\/$/,
+  ""
+);
 const ADMIN_ID = 1377253285;
 const tg = window.Telegram?.WebApp;
 
