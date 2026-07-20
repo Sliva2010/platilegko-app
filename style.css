@@ -1435,14 +1435,22 @@ input {
 .method-card__ico {
   width: 48px;
   height: 48px;
-  color: var(--white);
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: #0a0a0a;
+  overflow: hidden;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
 }
 
-.method-card__ico svg {
-  width: 44px;
-  height: 44px;
+.method-card__logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 6px;
+  box-sizing: border-box;
 }
 
 .method-card__title {
