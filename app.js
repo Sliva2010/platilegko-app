@@ -12,12 +12,64 @@ const state = {
   tasks: [],
   selectedTask: null,
   verifying: false,
+  balanceNum: 0,
 };
 
 const tg = window.Telegram?.WebApp;
 
 function money(v) {
   return `${Number(v || 0).toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
+}
+
+function haptic(type = "light") {
+  try {
+    if (type === "success") tg?.HapticFeedback?.notificationOccurred?.("success");
+    else if (type === "error") tg?.HapticFeedback?.notificationOccurred?.("error");
+    else if (type === "select") tg?.HapticFeedback?.selectionChanged?.();
+    else tg?.HapticFeedback?.impactOccurred?.(type);
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function animateNumber(el, from, to, ms = 520) {
+  if (!el) return;
+  const start = performance.now();
+  const d = to - from;
+  function frame(now) {
+    const t = Math.min(1, (now - start) / ms);
+    const ease = 1 - Math.pow(1 - t, 3);
+    el.textContent = money(from + d * ease);
+    if (t < 1) requestAnimationFrame(frame);
+    else el.textContent = money(to);
+  }
+  requestAnimationFrame(frame);
+  el.classList.remove("balance-tick");
+  void el.offsetWidth;
+  el.classList.add("balance-tick");
+}
+
+function stagger(container) {
+  if (!container) return;
+  [...container.children].forEach((child, i) => {
+    child.classList.add("anim-item");
+    child.style.animationDelay = `${Math.min(i * 0.05, 0.45)}s`;
+  });
+}
+
+function bindRipple(root = document) {
+  root.querySelectorAll(".btn").forEach((btn) => {
+    if (btn.dataset.rippleBound) return;
+    btn.dataset.rippleBound = "1";
+    btn.addEventListener("pointerdown", (e) => {
+      const r = btn.getBoundingClientRect();
+      btn.style.setProperty("--rx", `${((e.clientX - r.left) / r.width) * 100}%`);
+      btn.style.setProperty("--ry", `${((e.clientY - r.top) / r.height) * 100}%`);
+      btn.classList.remove("btn--ripple");
+      void btn.offsetWidth;
+      btn.classList.add("btn--ripple");
+    });
+  });
 }
 
 function fmtDate(iso) {
@@ -92,6 +144,7 @@ function switchTab(name) {
   document.querySelectorAll(".dock__btn").forEach((b) => {
     b.classList.toggle("dock__btn--on", b.dataset.nav === name);
   });
+  haptic("select");
   if (name === "wallet") loadTx();
   if (name === "friends") loadRefs();
 }
@@ -118,7 +171,8 @@ function setAvatar(url, letter) {
 
 function renderUser(user, tu) {
   state.user = user;
-  const bal = money(user.balance);
+  const nextBal = Number(user.balance) || 0;
+  const prevBal = state.balanceNum;
   const name = user.first_name || tu?.first_name || "Гость";
   const un = user.username
     ? `@${user.username}`
@@ -130,12 +184,28 @@ function renderUser(user, tu) {
     const el = document.getElementById(id);
     if (el) el.textContent = v;
   };
-  set("header-balance-value", bal);
-  set("wallet-balance", bal);
+
+  const headerBal = document.getElementById("header-balance-value");
+  const walletBal = document.getElementById("wallet-balance");
+  const statBal = document.getElementById("stat-balance");
+  if (prevBal !== nextBal) {
+    animateNumber(headerBal, prevBal, nextBal);
+    animateNumber(walletBal, prevBal, nextBal);
+    animateNumber(statBal, prevBal, nextBal);
+    document.getElementById("header-balance")?.classList.add("pill--flash");
+    setTimeout(() => {
+      document.querySelector(".pill")?.classList.remove("pill--flash");
+    }, 600);
+  } else {
+    set("header-balance-value", money(nextBal));
+    set("wallet-balance", money(nextBal));
+    set("stat-balance", money(nextBal));
+  }
+  state.balanceNum = nextBal;
+
   set("profile-name", name);
   set("profile-username", un);
   set("profile-id", `ID: ${user.user_id ?? "—"}`);
-  set("stat-balance", bal);
   set("stat-tasks", String(user.tasks_completed ?? 0));
   set("stat-refs", String(refs));
   set("wallet-tasks", String(user.tasks_completed ?? 0));
@@ -158,7 +228,7 @@ function renderTasks(tasks) {
   state.tasks = tasks;
   const box = document.getElementById("tasks-list");
   if (!tasks.length) {
-    box.innerHTML = `<p class="quiet center">Пока нет активных заданий</p>`;
+    box.innerHTML = `<div class="blank anim-item"><div class="blank__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="24" height="24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5"/></svg></div><h2>Нет заданий</h2><p>Админ ещё не добавил активные задания</p></div>`;
     return;
   }
   box.innerHTML = tasks
@@ -175,6 +245,7 @@ function renderTasks(tasks) {
       </button>`;
     })
     .join("");
+  stagger(box);
   box.querySelectorAll(".task").forEach((el) => {
     el.addEventListener("click", () => {
       const id = Number(el.dataset.id);
@@ -186,25 +257,36 @@ function renderTasks(tasks) {
 
 function openModal(task) {
   state.selectedTask = task;
+  const modal = document.getElementById("task-modal");
+  modal.classList.remove("is-closing");
   document.getElementById("modal-type").textContent = typeLabel(task.task_type);
   document.getElementById("modal-reward").textContent = `+${money(task.reward)}`;
   document.getElementById("modal-title").textContent = task.title;
   document.getElementById("modal-desc").textContent =
     task.description ||
     "Подпишитесь на канал (или подайте заявку) и нажмите «Проверить».";
-  document.getElementById("modal-status").textContent = task.completed
-    ? "Уже выполнено"
-    : "";
+  const status = document.getElementById("modal-status");
+  status.textContent = task.completed ? "Уже выполнено" : "";
+  status.classList.toggle("sheet__note--ok", !!task.completed);
   const doBtn = document.getElementById("btn-do-task");
   const checkBtn = document.getElementById("btn-check-task");
   doBtn.disabled = !!task.completed;
   checkBtn.disabled = !!task.completed;
-  document.getElementById("task-modal").hidden = false;
+  checkBtn.classList.remove("btn--loading");
+  modal.hidden = false;
+  haptic("light");
+  bindRipple(modal);
 }
 
 function closeModal() {
-  document.getElementById("task-modal").hidden = true;
-  state.selectedTask = null;
+  const modal = document.getElementById("task-modal");
+  if (modal.hidden) return;
+  modal.classList.add("is-closing");
+  setTimeout(() => {
+    modal.hidden = true;
+    modal.classList.remove("is-closing");
+    state.selectedTask = null;
+  }, 200);
 }
 
 function openChannelLink(url) {
@@ -250,8 +332,11 @@ async function checkTask() {
   }
   state.verifying = true;
   const status = document.getElementById("modal-status");
+  const checkBtn = document.getElementById("btn-check-task");
   status.textContent = "Проверяем подписку…";
-  document.getElementById("btn-check-task").disabled = true;
+  status.classList.remove("sheet__note--ok");
+  checkBtn.disabled = true;
+  checkBtn.classList.add("btn--loading");
   try {
     const res = await api(`/api/tasks/${task.id}/verify`, {
       method: "POST",
@@ -260,19 +345,24 @@ async function checkTask() {
     status.textContent = res.message || "";
     toast(res.message || (res.ok ? "Готово" : "Не подтверждено"));
     if (res.ok && res.user) {
+      status.classList.add("sheet__note--ok");
+      haptic("success");
       renderUser(res.user, tgUser());
       task.completed = true;
       document.getElementById("btn-do-task").disabled = true;
-      document.getElementById("btn-check-task").disabled = true;
+      checkBtn.disabled = true;
       await loadTasks();
     } else {
-      document.getElementById("btn-check-task").disabled = false;
+      haptic("error");
+      checkBtn.disabled = false;
     }
   } catch (e) {
     status.textContent = e.message || "Ошибка проверки";
     toast(e.message || "Ошибка");
-    document.getElementById("btn-check-task").disabled = false;
+    haptic("error");
+    checkBtn.disabled = false;
   } finally {
+    checkBtn.classList.remove("btn--loading");
     state.verifying = false;
   }
 }
@@ -296,6 +386,7 @@ function renderFriends(list) {
       </div>`;
     })
     .join("");
+  stagger(box);
 }
 
 function renderTx(txs) {
@@ -318,6 +409,7 @@ function renderTx(txs) {
       </div>`;
     })
     .join("");
+  stagger(box);
 }
 
 async function loadTasks() {
@@ -440,6 +532,7 @@ function init() {
     }
   }
   bind();
+  bindRipple();
   loadData();
 }
 

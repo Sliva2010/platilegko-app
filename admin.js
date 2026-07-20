@@ -54,8 +54,33 @@ async function loadStats() {
     document.getElementById("s-tasks").textContent = String(s.active_tasks ?? 0);
     document.getElementById("s-done").textContent = String(s.completions ?? 0);
     document.getElementById("s-bal").textContent = money(s.total_balances);
+    if (s.referral_bonus != null) {
+      document.getElementById("f-ref-bonus").value = String(s.referral_bonus);
+    }
   } catch (e) {
     document.getElementById("s-bal").textContent = "офлайн";
+  }
+}
+
+async function saveReferralBonus() {
+  const input = document.getElementById("f-ref-bonus");
+  const msg = document.getElementById("ref-msg");
+  const amount = Number(input.value);
+  if (Number.isNaN(amount) || amount < 0) {
+    msg.textContent = "Укажите корректную сумму (≥ 0)";
+    return;
+  }
+  try {
+    const res = await api(`/api/admin/settings/referral_bonus?${adminQuery()}`, {
+      method: "PUT",
+      body: JSON.stringify({ amount }),
+    });
+    msg.textContent = `Сохранено: ${money(res.referral_bonus)} за приглашение`;
+    toast("Реферальный бонус обновлён");
+    input.value = String(res.referral_bonus);
+  } catch (e) {
+    msg.textContent = e.message;
+    toast(e.message);
   }
 }
 
@@ -208,6 +233,7 @@ function init() {
   panel.hidden = false;
 
   document.getElementById("btn-create")?.addEventListener("click", createTask);
+  document.getElementById("btn-save-ref")?.addEventListener("click", saveReferralBonus);
   document.getElementById("btn-reload")?.addEventListener("click", async () => {
     await loadTasks();
     await loadStats();

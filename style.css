@@ -51,6 +51,71 @@ input {
   background:
     radial-gradient(120% 60% at 50% -10%, #1a1a1a 0%, transparent 55%),
     var(--bg);
+  animation: appBoot 0.55s var(--ease) both;
+}
+
+@keyframes appBoot {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Ambient pulse on brand mark */
+.mark {
+  animation: markPulse 3.2s ease-in-out infinite;
+}
+
+@keyframes markPulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.12));
+    transform: scale(1.03);
+  }
+}
+
+.top {
+  animation: slideDown 0.45s var(--ease) both;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pill {
+  transition: transform 0.2s var(--ease), border-color 0.2s;
+}
+
+.pill--flash {
+  animation: pillFlash 0.55s var(--ease);
+}
+
+@keyframes pillFlash {
+  0% {
+    transform: scale(1);
+    border-color: var(--line);
+  }
+  40% {
+    transform: scale(1.06);
+    border-color: #666;
+  }
+  100% {
+    transform: scale(1);
+    border-color: var(--line);
+  }
 }
 
 .quiet {
@@ -137,17 +202,35 @@ input {
 
 .tab {
   display: none;
-  animation: in 0.22s var(--ease);
 }
 
 .tab--on {
   display: block;
+  animation: tabIn 0.38s var(--ease) both;
 }
 
-@keyframes in {
+@keyframes tabIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(14px) scale(0.985);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Stagger list items */
+.anim-item {
+  animation: itemIn 0.42s var(--ease) both;
+}
+
+@keyframes itemIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
   }
   to {
     opacity: 1;
@@ -192,11 +275,16 @@ input {
   border-radius: var(--radius);
   padding: 14px;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.18s var(--ease),
+    box-shadow 0.2s;
+  will-change: transform;
 }
 
 .task:active {
-  transform: scale(0.985);
+  transform: scale(0.97);
 }
 
 .task:hover,
@@ -204,10 +292,28 @@ input {
   border-color: var(--line-strong);
   background: var(--bg-soft);
   outline: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
 }
 
 .task--done {
   opacity: 0.55;
+}
+
+.task__ico {
+  transition: transform 0.25s var(--ease);
+}
+
+.task:hover .task__ico {
+  transform: scale(1.06) rotate(-3deg);
+}
+
+.task__pay {
+  transition: transform 0.2s var(--ease);
+}
+
+.task:hover .task__pay {
+  transform: scale(1.05);
 }
 
 .task__ico {
@@ -219,6 +325,30 @@ input {
   display: grid;
   place-items: center;
   color: var(--text);
+  position: relative;
+  overflow: hidden;
+}
+
+.task__ico::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 70%
+  );
+  animation: sheen 2.8s ease-in-out infinite;
+}
+
+@keyframes sheen {
+  0% {
+    transform: translateX(-40%) rotate(12deg);
+  }
+  100% {
+    transform: translateX(40%) rotate(12deg);
+  }
 }
 
 .task__ico svg {
@@ -522,6 +652,18 @@ input {
   border-top: 1px solid var(--line);
   backdrop-filter: blur(16px);
   z-index: 40;
+  animation: dockUp 0.5s var(--ease) 0.1s both;
+}
+
+@keyframes dockUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .dock__btn {
@@ -539,16 +681,38 @@ input {
   font-size: 0.6rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+  transition: color 0.2s, background 0.2s, transform 0.15s var(--ease);
 }
 
 .dock__btn svg {
   width: 22px;
   height: 22px;
+  transition: transform 0.25s var(--ease);
+}
+
+.dock__btn:active {
+  transform: scale(0.92);
 }
 
 .dock__btn--on {
   color: var(--white);
   background: #141414;
+}
+
+.dock__btn--on svg {
+  animation: iconPop 0.35s var(--ease);
+}
+
+@keyframes iconPop {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* Buttons */
@@ -563,11 +727,39 @@ input {
   font-size: 0.92rem;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: transform 0.1s, opacity 0.15s, background 0.15s;
+  transition: transform 0.15s var(--ease), opacity 0.15s, background 0.15s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), rgba(255, 255, 255, 0.25), transparent 55%);
+  opacity: 0;
+  transition: opacity 0.35s;
+  pointer-events: none;
+}
+
+.btn.btn--ripple::after {
+  opacity: 1;
+  animation: rippleFade 0.55s var(--ease) forwards;
+}
+
+@keyframes rippleFade {
+  from {
+    opacity: 0.55;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.4);
+  }
 }
 
 .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 .btn:disabled {
@@ -581,10 +773,19 @@ input {
   border-color: var(--white);
 }
 
+.btn--solid:hover {
+  box-shadow: 0 0 0 1px #fff, 0 8px 28px rgba(255, 255, 255, 0.12);
+}
+
 .btn--line {
   background: transparent;
   color: var(--white);
   border-color: var(--line-strong);
+}
+
+.btn--line:hover {
+  border-color: #555;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .btn--compact {
@@ -592,6 +793,28 @@ input {
   padding: 10px 14px;
   font-size: 0.8rem;
   flex-shrink: 0;
+}
+
+.btn--loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.btn--loading::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Sheet modal */
@@ -608,10 +831,34 @@ input {
   display: none;
 }
 
+.sheet.is-closing .sheet__panel {
+  animation: sheetDown 0.22s var(--ease) forwards;
+}
+
+.sheet.is-closing .sheet__dim {
+  animation: dimOut 0.22s ease forwards;
+}
+
 .sheet__dim {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.72);
+  animation: dimIn 0.28s ease both;
+}
+
+@keyframes dimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dimOut {
+  to {
+    opacity: 0;
+  }
 }
 
 .sheet__panel {
@@ -624,17 +871,24 @@ input {
   border-bottom: none;
   border-radius: 20px 20px 0 0;
   padding: 12px 18px calc(22px + var(--safe));
-  animation: up 0.28s var(--ease);
+  animation: sheetUp 0.38s var(--ease);
 }
 
-@keyframes up {
+@keyframes sheetUp {
   from {
-    transform: translateY(40px);
-    opacity: 0;
+    transform: translateY(100%);
+    opacity: 0.6;
   }
   to {
     transform: none;
     opacity: 1;
+  }
+}
+
+@keyframes sheetDown {
+  to {
+    transform: translateY(100%);
+    opacity: 0.5;
   }
 }
 
@@ -730,8 +984,123 @@ input {
   font-weight: 500;
   z-index: 200;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: toastIn 0.32s var(--ease);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(14px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
 }
 
 .toast[hidden] {
   display: none;
+}
+
+/* Hero / wallet motion */
+.hero-card,
+.wallet {
+  animation: cardGlow 0.5s var(--ease) both;
+}
+
+@keyframes cardGlow {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.wallet__sum,
+.hero-card__value,
+.pill__value {
+  transition: color 0.2s;
+}
+
+.balance-tick {
+  animation: balanceTick 0.45s var(--ease);
+}
+
+@keyframes balanceTick {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.metric {
+  transition: transform 0.2s var(--ease), border-color 0.2s;
+}
+
+.metric:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+}
+
+.profile {
+  animation: itemIn 0.45s var(--ease) both;
+}
+
+.avatar {
+  transition: transform 0.3s var(--ease), box-shadow 0.3s;
+}
+
+.avatar:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 0 1px #444;
+}
+
+/* Empty state soft float */
+.blank__icon {
+  animation: floatY 3s ease-in-out infinite;
+}
+
+@keyframes floatY {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Success pulse on check */
+.sheet__note--ok {
+  color: #ddd !important;
+  animation: okPulse 0.6s var(--ease);
+}
+
+@keyframes okPulse {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
