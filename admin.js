@@ -29,9 +29,25 @@ function adminQuery() {
 }
 
 async function api(path, opts = {}) {
-  let res;
+  let base = (window.PLATI_API_BASE || API_BASE || "http://127.0.0.1:8000").replace(
+    /\/$/,
+    ""
+  );
+  try {
+    const cr = await fetch(`config.js?t=${Date.now()}`, { cache: "no-store" });
+    if (cr.ok) {
+      const t = await cr.text();
+      const m = t.match(/PLATI_API_BASE\s*=\s*["']([^"']+)["']/);
+      if (m) base = m[1].replace(/\/$/, "");
+    }
+  } catch (_) {
+    /* keep */
+  }
+
   const headers = {
     Accept: "application/json",
+    "Bypass-Tunnel-Reminder": "true",
+    "User-Agent": "TelegramBot-WebApp-PlatiLegko-Admin/1.0",
     ...(opts.body ? { "Content-Type": "application/json" } : {}),
     ...(opts.headers || {}),
   };
@@ -39,15 +55,19 @@ async function api(path, opts = {}) {
   if (initData) {
     headers["X-Telegram-Init-Data"] = initData;
   }
+  let res;
   try {
-    res = await fetch(`${API_BASE}${path}`, {
-      ...opts,
-      headers,
-    });
+    res = await fetch(`${base}${path}`, { ...opts, headers, mode: "cors" });
   } catch (e) {
-    throw new Error("Нет связи с сервером. Запустите backend.");
+    throw new Error(`Нет связи с сервером (${base})`);
   }
-  const data = await res.json().catch(() => ({}));
+  const raw = await res.text();
+  let data = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    throw new Error(`Ответ не JSON (${base})`);
+  }
   if (!res.ok) {
     const detail = data.detail;
     const msg =
@@ -60,6 +80,7 @@ async function api(path, opts = {}) {
   }
   return data;
 }
+
 
 async function loadStats() {
   try {

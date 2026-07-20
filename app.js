@@ -1,11 +1,30 @@
 /**
  * ПлатиЛегко Mini App
- * API_BASE берётся из config.js (start_bot.py пишет публичный HTTPS URL).
+ * API URL: config.js + перечитывание без кэша (Telegram WebView кэширует жёстко).
  */
-const API_BASE = (
+let API_BASE = (
   window.PLATI_API_BASE ||
   "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
+
+async function refreshApiBaseFromConfig() {
+  try {
+    const r = await fetch(`config.js?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { Accept: "text/javascript,*/*" },
+    });
+    if (!r.ok) return API_BASE;
+    const text = await r.text();
+    const m = text.match(/PLATI_API_BASE\s*=\s*["']([^"']+)["']/);
+    if (m && m[1]) {
+      API_BASE = m[1].replace(/\/$/, "");
+      window.PLATI_API_BASE = API_BASE;
+    }
+  } catch (_) {
+    /* keep previous */
+  }
+  return API_BASE;
+}
 
 const ICO_SUB = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16v11a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/><path d="M8 7V5a4 4 0 018 0v2"/><circle cx="12" cy="13" r="1.2" fill="currentColor" stroke="none"/></svg>`;
 const ICO_DONE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 13l4 4L19 7"/></svg>`;
@@ -143,9 +162,11 @@ function telegramInitData() {
 }
 
 async function api(path, opts = {}) {
-  let res;
   const headers = {
     Accept: "application/json",
+    // localtunnel / некоторые прокси
+    "Bypass-Tunnel-Reminder": "true",
+    "User-Agent": "TelegramBot-WebApp-PlatiLegko/1.0",
     ...(opts.body ? { "Content-Type": "application/json" } : {}),
     ...(opts.headers || {}),
   };
@@ -153,17 +174,36 @@ async function api(path, opts = {}) {
   if (initData) {
     headers["X-Telegram-Init-Data"] = initData;
   }
+
+  async function doFetch(base) {
+    return fetch(`${base}${path}`, { ...opts, headers, mode: "cors" });
+  }
+
+  let res;
   try {
-    res = await fetch(`${API_BASE}${path}`, {
-      ...opts,
-      headers,
-    });
-  } catch (e) {
+    res = await doFetch(API_BASE);
+  } catch (e1) {
+    // один раз обновить config.js и повторить
+    await refreshApiBaseFromConfig();
+    try {
+      res = await doFetch(API_BASE);
+    } catch (e2) {
+      throw new Error(
+        `Нет связи с сервером (${API_BASE}). Админ: запусти start_bot.py и не закрывай окно.`
+      );
+    }
+  }
+
+  const raw = await res.text();
+  let data = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    // HTML-заглушка туннеля и т.п.
     throw new Error(
-      "Нет связи с сервером. Админ должен запустить бота с туннелем (start_bot.py)."
+      `Сервер ответил не JSON (туннель/прокси). URL: ${API_BASE}`
     );
   }
-  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(formatApiError(data, res.status));
     err.data = data;
@@ -820,7 +860,7 @@ function bind() {
   });
 }
 
-function init() {
+async function init() {
   if (tg) {
     tg.ready();
     tg.expand();
@@ -833,8 +873,17 @@ function init() {
   }
   bind();
   bindRipple();
-  loadPublicSettings();
-  loadData().then(() => loadPrizes());
+  await refreshApiBaseFromConfig();
+  console.log("[ПлатиЛегко] API_BASE =", API_BASE);
+  await loadPublicSettings();
+  await loadData();
+  await loadPrizes();
 }
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+  init().catch((e) => {
+    console.error(e);
+    toast(e.message || "Ошибка загрузки");
+  });
+});
+
