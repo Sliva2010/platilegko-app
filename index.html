@@ -43,34 +43,50 @@
       <section class="tab" data-tab="prizes">
         <div class="section-head">
           <h1>Призы</h1>
-          <p class="quiet">Бонусы за активность</p>
+          <p class="quiet">Заполняй шкалу приглашениями</p>
         </div>
-        <div id="prizes-list" class="stack">
-          <article class="prize-card">
-            <div class="prize-card__top">
-              <div class="prize-card__badge">PRIZE</div>
-              <div class="prize-card__reward" id="prize-reward">+1 500 ₽</div>
+
+        <article class="prize-panel" id="prize-panel">
+          <div class="prize-panel__glow" aria-hidden="true"></div>
+
+          <div class="prize-panel__head">
+            <div>
+              <div class="prize-panel__kicker">Миссия</div>
+              <h2 class="prize-panel__title" id="prize-title">Пригласи 20 друзей</h2>
             </div>
-            <h2 class="prize-card__title" id="prize-title">Пригласи 20 друзей</h2>
-            <p class="prize-card__desc" id="prize-desc">
-              Пригласи 20 человек в бота по своей ссылке и получи 1500 ₽ на баланс.
-            </p>
-            <div class="prize-progress">
-              <div class="prize-progress__bar">
-                <div class="prize-progress__fill" id="prize-fill" style="width: 0%"></div>
-              </div>
-              <div class="prize-progress__meta">
-                <span id="prize-progress-text">0 / 20</span>
-                <span id="prize-percent">0%</span>
-              </div>
+            <div class="prize-panel__prize">
+              <span class="prize-panel__prize-label">Награда</span>
+              <span class="prize-panel__prize-value" id="prize-reward">1 500 ₽</span>
             </div>
-            <button type="button" class="btn btn--solid" id="btn-claim-prize" disabled>
-              Получить 1 500 ₽
-            </button>
-            <p class="sheet__note quiet" id="prize-status"></p>
-            <button type="button" class="btn btn--line" id="btn-prize-to-friends">Моя реферальная ссылка</button>
-          </article>
-        </div>
+          </div>
+
+          <p class="prize-panel__desc" id="prize-desc">
+            Каждый друг по твоей ссылке зажигает ячейку. Когда все 20 заполнены — забери 1500 ₽ на баланс.
+          </p>
+
+          <div class="prize-panel__count">
+            <span class="prize-panel__count-num" id="prize-progress-text">0</span>
+            <span class="prize-panel__count-sep">/</span>
+            <span class="prize-panel__count-max" id="prize-need">20</span>
+          </div>
+
+          <div class="prize-track" id="prize-track" aria-label="Прогресс приглашений 1–20">
+            <!-- 20 cells filled by app.js -->
+          </div>
+
+          <div class="prize-panel__bar-wrap">
+            <div class="prize-panel__bar">
+              <div class="prize-panel__bar-fill" id="prize-fill" style="width: 0%"></div>
+            </div>
+            <span class="prize-panel__pct" id="prize-percent">0%</span>
+          </div>
+
+          <button type="button" class="btn btn--solid prize-panel__claim" id="btn-claim-prize" disabled>
+            Получить приз · 1 500 ₽
+          </button>
+          <p class="prize-panel__status quiet" id="prize-status">Приглашай друзей — шкала заполнится сама</p>
+          <button type="button" class="btn btn--line" id="btn-prize-to-friends">Открыть реферальную ссылку</button>
+        </article>
       </section>
 
       <section class="tab" data-tab="friends">

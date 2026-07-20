@@ -616,23 +616,72 @@ function applyMaintenance(on, message) {
   }
 }
 
+function buildPrizeTrack(need = 20) {
+  const track = document.getElementById("prize-track");
+  if (!track) return;
+  if (track.childElementCount === need) return;
+  track.innerHTML = "";
+  for (let i = 1; i <= need; i++) {
+    const cell = document.createElement("div");
+    cell.className = "prize-cell";
+    cell.dataset.n = String(i);
+    cell.textContent = String(i);
+    track.appendChild(cell);
+  }
+}
+
+function paintPrizeTrack(progress, need, claimed) {
+  const track = document.getElementById("prize-track");
+  if (!track) return;
+  const cells = track.querySelectorAll(".prize-cell");
+  cells.forEach((cell) => {
+    const n = Number(cell.dataset.n);
+    cell.classList.remove("prize-cell--on", "prize-cell--next", "prize-cell--done");
+    if (n <= progress) {
+      cell.classList.add("prize-cell--on");
+      if (claimed || progress >= need) cell.classList.add("prize-cell--done");
+    } else if (n === progress + 1 && !claimed && progress < need) {
+      cell.classList.add("prize-cell--next");
+    }
+  });
+}
+
 function renderPrize(p) {
   if (!p) return;
   const need = p.need || 20;
-  const progress = p.progress ?? 0;
-  const percent = p.percent ?? 0;
+  const progress = Math.min(p.progress ?? 0, need);
+  const percent = p.percent ?? Math.round((100 * progress) / need);
   const reward = p.reward ?? 1500;
+
+  buildPrizeTrack(need);
+  paintPrizeTrack(progress, need, !!p.claimed);
+
   setText("prize-title", p.title || "Пригласи 20 друзей");
   setText(
     "prize-desc",
     p.description ||
-      "Пригласи 20 человек в бота по своей ссылке и получи 1500 ₽ на баланс."
+      "Каждый друг по твоей ссылке зажигает ячейку. Когда все 20 заполнены — забери 1500 ₽ на баланс."
   );
-  setText("prize-reward", `+${money(reward)}`);
-  setText("prize-progress-text", `${progress} / ${need}`);
+  setText("prize-reward", money(reward).replace(" ₽", "") + " ₽");
+  setText("prize-need", String(need));
+
+  const numEl = document.getElementById("prize-progress-text");
+  if (numEl) {
+    const prev = Number(numEl.textContent) || 0;
+    numEl.textContent = String(progress);
+    if (prev !== progress) {
+      numEl.classList.remove("is-bump");
+      void numEl.offsetWidth;
+      numEl.classList.add("is-bump");
+    }
+  }
   setText("prize-percent", `${percent}%`);
   const fill = document.getElementById("prize-fill");
   if (fill) fill.style.width = `${Math.min(100, percent)}%`;
+
+  const panel = document.getElementById("prize-panel");
+  panel?.classList.toggle("prize-panel--complete", progress >= need && !p.claimed);
+  panel?.classList.toggle("prize-panel--claimed", !!p.claimed);
 
   const btn = document.getElementById("btn-claim-prize");
   const status = document.getElementById("prize-status");
@@ -641,17 +690,21 @@ function renderPrize(p) {
 
   if (p.claimed) {
     btn.disabled = true;
-    btn.textContent = "Приз получен";
-    if (status) status.textContent = "Награда уже зачислена на баланс";
-  } else if (p.can_claim) {
+    btn.textContent = "Приз уже на балансе";
+    if (status) status.textContent = "1 500 ₽ зачислены. Спасибо за приглашения!";
+  } else if (p.can_claim || progress >= need) {
     btn.disabled = false;
-    btn.textContent = `Получить ${money(reward)}`;
-    if (status) status.textContent = "Условие выполнено — забери приз";
+    btn.textContent = `Получить приз · ${money(reward)}`;
+    if (status) status.textContent = "Шкала заполнена — забери 1500 ₽ на баланс";
   } else {
     btn.disabled = true;
-    btn.textContent = `Получить ${money(reward)}`;
+    btn.textContent = `Получить приз · ${money(reward)}`;
+    const left = Math.max(0, need - progress);
     if (status) {
-      status.textContent = `Осталось пригласить: ${Math.max(0, need - progress)}`;
+      status.textContent =
+        progress === 0
+          ? "Приглашай друзей — ячейки 1–20 загорятся сами"
+          : `Заполнено ${progress} из ${need}. Осталось: ${left}`;
     }
   }
 }
