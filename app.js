@@ -135,15 +135,25 @@ function formatApiError(data, status) {
   return `HTTP ${status}`;
 }
 
+function telegramInitData() {
+  return (tg?.initData || "").trim();
+}
+
 async function api(path, opts = {}) {
   let res;
+  const headers = {
+    Accept: "application/json",
+    ...(opts.body ? { "Content-Type": "application/json" } : {}),
+    ...(opts.headers || {}),
+  };
+  const initData = telegramInitData();
+  if (initData) {
+    headers["X-Telegram-Init-Data"] = initData;
+  }
   try {
     res = await fetch(`${API_BASE}${path}`, {
-      headers: {
-        Accept: "application/json",
-        ...(opts.body ? { "Content-Type": "application/json" } : {}),
-      },
       ...opts,
+      headers,
     });
   } catch (e) {
     throw new Error("Нет связи с сервером");
