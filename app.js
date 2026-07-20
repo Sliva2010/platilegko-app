@@ -167,6 +167,7 @@ function switchTab(name) {
   haptic("select");
   if (name === "wallet") loadTx();
   if (name === "friends") loadRefs();
+  if (name === "prizes") loadPrizes();
 }
 
 function setAvatar(url, letter) {
@@ -615,6 +616,90 @@ function applyMaintenance(on, message) {
   }
 }
 
+function renderPrize(p) {
+  if (!p) return;
+  const need = p.need || 20;
+  const progress = p.progress ?? 0;
+  const percent = p.percent ?? 0;
+  const reward = p.reward ?? 1500;
+  setText("prize-title", p.title || "Пригласи 20 друзей");
+  setText(
+    "prize-desc",
+    p.description ||
+      "Пригласи 20 человек в бота по своей ссылке и получи 1500 ₽ на баланс."
+  );
+  setText("prize-reward", `+${money(reward)}`);
+  setText("prize-progress-text", `${progress} / ${need}`);
+  setText("prize-percent", `${percent}%`);
+  const fill = document.getElementById("prize-fill");
+  if (fill) fill.style.width = `${Math.min(100, percent)}%`;
+
+  const btn = document.getElementById("btn-claim-prize");
+  const status = document.getElementById("prize-status");
+  if (!btn) return;
+  btn.dataset.prizeId = p.id || "invite_20";
+
+  if (p.claimed) {
+    btn.disabled = true;
+    btn.textContent = "Приз получен";
+    if (status) status.textContent = "Награда уже зачислена на баланс";
+  } else if (p.can_claim) {
+    btn.disabled = false;
+    btn.textContent = `Получить ${money(reward)}`;
+    if (status) status.textContent = "Условие выполнено — забери приз";
+  } else {
+    btn.disabled = true;
+    btn.textContent = `Получить ${money(reward)}`;
+    if (status) {
+      status.textContent = `Осталось пригласить: ${Math.max(0, need - progress)}`;
+    }
+  }
+}
+
+function setText(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = v;
+}
+
+async function loadPrizes() {
+  const uid = state.user?.user_id || tgUser().user_id;
+  if (!uid) return;
+  try {
+    const data = await api(`/api/user/${uid}/prizes`);
+    const p = (data.prizes || [])[0];
+    renderPrize(p);
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+async function claimPrize() {
+  const uid = state.user?.user_id || tgUser().user_id;
+  const btn = document.getElementById("btn-claim-prize");
+  if (!uid || !btn || btn.disabled) return;
+  const prizeId = btn.dataset.prizeId || "invite_20";
+  btn.disabled = true;
+  btn.classList.add("btn--loading");
+  try {
+    const res = await api(`/api/user/${uid}/prizes/claim`, {
+      method: "POST",
+      body: JSON.stringify({ prize_id: prizeId }),
+    });
+    toast(res.message || "Приз начислен");
+    haptic("success");
+    if (res.user) renderUser(res.user, tgUser());
+    const p = (res.prizes || [])[0];
+    if (p) renderPrize(p);
+    else await loadPrizes();
+  } catch (e) {
+    toast(e.message || "Ошибка");
+    haptic("error");
+    btn.disabled = false;
+  } finally {
+    btn.classList.remove("btn--loading");
+  }
+}
+
 async function loadPublicSettings() {
   try {
     const s = await api("/api/settings/public");
@@ -639,6 +724,10 @@ function bind() {
   document.getElementById("btn-check-task")?.addEventListener("click", checkTask);
   document.getElementById("btn-withdraw")?.addEventListener("click", openWithdraw);
   document.getElementById("btn-wd-submit")?.addEventListener("click", submitWithdraw);
+  document.getElementById("btn-claim-prize")?.addEventListener("click", claimPrize);
+  document.getElementById("btn-prize-to-friends")?.addEventListener("click", () => {
+    switchTab("friends");
+  });
   document.getElementById("btn-refresh-wallet")?.addEventListener("click", async () => {
     await loadData();
     await loadTx();
@@ -677,7 +766,7 @@ function init() {
   bind();
   bindRipple();
   loadPublicSettings();
-  loadData();
+  loadData().then(() => loadPrizes());
 }
 
 document.addEventListener("DOMContentLoaded", init);

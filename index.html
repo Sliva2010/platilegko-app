@@ -41,14 +41,35 @@
 
     <main class="main">
       <section class="tab" data-tab="prizes">
-        <div class="blank">
-          <div class="blank__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
-              <path d="M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 15.9 7.2 18l.9-5.4L4.2 8.7l5.4-.8L12 3z"/>
-            </svg>
-          </div>
-          <h2>Призы</h2>
-          <p>Раздел в подготовке. Розыгрыши появятся позже.</p>
+        <div class="section-head">
+          <h1>Призы</h1>
+          <p class="quiet">Бонусы за активность</p>
+        </div>
+        <div id="prizes-list" class="stack">
+          <article class="prize-card">
+            <div class="prize-card__top">
+              <div class="prize-card__badge">PRIZE</div>
+              <div class="prize-card__reward" id="prize-reward">+1 500 ₽</div>
+            </div>
+            <h2 class="prize-card__title" id="prize-title">Пригласи 20 друзей</h2>
+            <p class="prize-card__desc" id="prize-desc">
+              Пригласи 20 человек в бота по своей ссылке и получи 1500 ₽ на баланс.
+            </p>
+            <div class="prize-progress">
+              <div class="prize-progress__bar">
+                <div class="prize-progress__fill" id="prize-fill" style="width: 0%"></div>
+              </div>
+              <div class="prize-progress__meta">
+                <span id="prize-progress-text">0 / 20</span>
+                <span id="prize-percent">0%</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn--solid" id="btn-claim-prize" disabled>
+              Получить 1 500 ₽
+            </button>
+            <p class="sheet__note quiet" id="prize-status"></p>
+            <button type="button" class="btn btn--line" id="btn-prize-to-friends">Моя реферальная ссылка</button>
+          </article>
         </div>
       </section>
 
